@@ -1,0 +1,29 @@
+version: "3.3"
+
+services:
+  db:
+    image: mysql:8
+    container_name: login-mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: freeradius
+      MYSQL_USER: login
+      MYSQL_PASSWORD: login
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+  login:
+    container_name: login
+    build: .
+    environment:
+      - MYSQL_DB_SERVER=login-mysql
+      - MYSQL_DB_PORT=3306
+      - MYSQL_DB_NAME=freeradius
+      - MYSQL_DB_USER=login
+      - MYSQL_DB_PW=login
+      - GECO_API_URL=https://geco.ethz.ch/api/v2/auth
+      - GECO_API_KEY=blub
+    depends_on:
+      - db
+    ports:
+      - 8080:8080

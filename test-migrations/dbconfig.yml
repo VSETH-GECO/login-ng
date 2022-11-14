@@ -1,0 +1,5 @@
+development:
+  dialect: mysql
+  datasource: login:login@/freeradius?parseTime=true
+  dir: test-migrations
+  table: test_migrations
