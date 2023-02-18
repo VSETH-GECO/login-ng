@@ -1,25 +1,15 @@
-{{define "content"}}
+{{template "header"}}
 
-{{if .}}
-    {{if .Error}}
-    <div class="alert alert-danger" role="alert">
-        {{.Error}}
-    </div>
-    {{end}}
-{{end}}
+{{template "error" .}}
 
-<form action="/login" method="POST">
-    <div class="form-floating mb-4">
-        <input type="text" class="form-control" id="username" placeholder="Username" required>
-        <label for="floatingInput">Username</label>
-    </div>
-
-    <div class="form-floating mb-4">
-        <input type="password" class="form-control" id="password" placeholder="Password" required>
-        <label for="floatingPassword">Password</label>
-    </div>
-
+<form action="/login">
     <button type="submit" class="btn btn-primary btn-lg btn-block">Login</button>
 </form>
 
-{{end}}
+{{/* TODO
+<form action="/switch">
+    <button type="submit" class="btn btn-primary btn-lg btn-block">Switch VLAN</button>
+</form>
+*/}}
+
+{{template "footer"}}

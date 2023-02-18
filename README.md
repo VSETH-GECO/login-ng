@@ -26,8 +26,13 @@ $ go run . \
     -mysql-name freeradius \
     -mysql-user login \
     -mysql-pw login \
-    -geco-api-url 'https://geco.ethz.ch/api/v2/auth' \
-    -geco-api-key blub \
+    -oidc-issuer https://geco.ethz.ch/ \
+    -oidc-redirect-url https://localhost:8080/callback \
+    -oidc-client-id login-ng \
+    -oidc-client-secret topsecret \
+    -geco-lan-id=1 \
+    -geco-userstatus-endpoint=https://geco.ethz.ch/api/v1/lan_parties/%s/me \
+    -session-secret abcdef \
     -log-level debug \
     -log-format console
 ```
@@ -42,3 +47,57 @@ $ show tables;
 ## Debug
 
 Use the debug configuration in `.vscode/launch.json`.
+
+## Examples
+
+### Example ID token
+
+The `access_token` can be used to query the GECo API.
+
+```json
+{
+    "OAuth2Token": {
+        "access_token": "*REDACTED*",
+        "token_type": "Bearer",
+        "expiry": "2023-02-17T20:48:09.675152642+01:00"
+    },
+    "IDToken": {
+        "Issuer": "https://geco.ethz.ch/",
+        "Audience": [
+            "Jv-2yo6kJv_NuqiN2iCAAAKzIky3rTH8ZzzXqiFTjY4"
+        ],
+        "Subject": "1607",
+        "Expiry": "2023-02-17T18:50:09+01:00",
+        "IssuedAt": "2023-02-17T18:48:09+01:00",
+        "Nonce": "P3HlDxq3jRGRhzQlc02qJQ",
+        "AccessTokenHash": ""
+    }
+}
+```
+
+### Example GECo API user status response
+
+See https://lan.h4ck.ch/api/v1#/paths/api-v1-lan_parties-id--me/get
+
+* Ticket bought and checked in (status code 200):
+
+```json
+{
+  "user": {
+    "id": 1607,
+    "username": "aponax"
+  },
+  "seat": {
+    "id": 14,
+    "name": "14"
+  }
+}
+```
+
+* No ticket or not checked in (status code 422):
+
+```json
+{
+  "message": "User has no ticket assigned for this LanParty"
+}
+```

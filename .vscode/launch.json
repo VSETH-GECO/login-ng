@@ -15,7 +15,14 @@
         "MYSQL_DB_USER": "login",
         "MYSQL_DB_PW": "login",
         "GECO_API_URL": "http://example.com:1234",
-        "GECO_API_KEY": "blub"
+        "GECO_API_KEY": "blub",
+        "OIDC_ISSUER": "https://geco.ethz.ch",
+        "OIDC_REDIRECT_URL": "https://localhost:8080",
+        "OIDC_CLIENT_ID": "login-ng",
+        "OIDC_CLIENT_SECRET": "abcdef",
+        "GECO_LAN_ID": "1",
+        "GECO_USERSTATUS_ENDPOINT": "https://geco.ethz.ch/api/v1/lan_parties/%s/me",
+        "SESSION_SECRET": "abcdef"
       },
       "args": ["-log-level", "debug", "-log-format", "console"]
     }

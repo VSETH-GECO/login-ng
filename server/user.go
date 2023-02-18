@@ -1,72 +1,66 @@
 package server
 
 import (
-	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"net/http"
-	"net/url"
-	"strings"
+
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-gonic/gin"
 )
 
-type authResp struct {
-	Code    int    `json:"code,omitempty"`
-	Message string `json:"message,omitempty"`
-	Success bool   `json:"success,omitempty"`
-	String  string `json:"error,omitempty"`
+type GecoAPIConfig struct {
+	LanID                 string
+	UserstatusEndpointFmt string
 }
 
-/*
-	curl \
-		-v \
-		-X POST \
-		--data-urlencode 'username=flbuetle password=INSERT' \
-		-H 'X-API-KEY: INSERT' \
-		'https://geco.ethz.ch/api/v2/auth'
-*/
-func (s *Server) authenticate(ctx context.Context, username, password string) error {
+// see https://geco.ethz.ch/api/v1#/paths/api-v1-lan_parties-id--me/get
+func (s *Server) userIsCheckedin(ctx *gin.Context) error {
+	session := sessions.Default(ctx)
+	sub := session.Get("sub").(string)
+	log := s.Log.With().Str("sub", sub).Logger()
+
 	client := &http.Client{Transport: &http.Transport{
 		TLSClientConfig: &tls.Config{},
 	}}
 
-	data := url.Values{
-		"username": []string{username},
-		"password": []string{password},
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.GecoAPIurl, strings.NewReader(data.Encode()))
+	accessToken := session.Get("access_token").(string)
+	userstatusURL := fmt.Sprintf(s.GecoAPIConfig.UserstatusEndpointFmt, s.GecoAPIConfig.LanID)
+	req, err := http.NewRequestWithContext(ctx.Request.Context(), http.MethodGet, userstatusURL, nil)
 	if err != nil {
-		s.Log.Error().Err(err).Msg("failed to create request")
+		log.Error().Err(err).Msg("failed to create user status request")
 		return err
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("X-API-KEY", s.GecoAPIkey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+accessToken)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		s.Log.Error().Err(err).Msg("failed to send auth request")
+		log.Error().Err(err).Msg("Failed to send user status request.")
 		return err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		s.Log.Error().Int("code", resp.StatusCode).Msg("auth server responded wrong status code")
-		return errors.New("invalid status code")
-	}
-
-	/* TODO anythin to check here?
-	var ar authResp
-	err = json.NewDecoder(resp.Body).Decode(&ar)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		s.Log.Error().Err(err).Msg("failed to decode response")
+		log.Error().Err(err).Msg("Failed to read body.")
 		return err
 	}
 
-	if ar.Code != http.StatusOK {
-		s.Log.Error().Int("code", ar.Code).Str("message", ar.Message).Msg("auth response has wrong status code")
-		return errors.New("invalid status code")
+	switch resp.StatusCode {
+	case http.StatusOK: // 200
+		return nil
+	case http.StatusUnprocessableEntity: // 422
+		log.Info().Msg("No ticket or not checked-in")
+		return errors.New("Please assign a ticket to your account or check-in first.")
+	default: // 401 or 404
+		log.
+			Error().
+			Int("code", resp.StatusCode).
+			Str("body", string(body)).
+			Msg("Failed to get user status.")
+		return errors.New("Failed to check user status. Please try again.")
 	}
-	*/
-
-	s.Log.Info().Msg("successfully authenticated user")
-	return nil
 }

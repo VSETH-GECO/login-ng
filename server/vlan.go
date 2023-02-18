@@ -75,8 +75,8 @@ var switchIPtoVLAN = map[string]int{
 // TODO replace hardcoded map by db query
 func (s *Server) translateSwitchIPtoVLAN(ctx context.Context, switchIP string) (int, error) {
 	if vlan, ok := switchIPtoVLAN[switchIP]; ok {
-		s.Log.Error().Str("switch ip", switchIP).Msg("failed to find vlan for switch ip")
 		return vlan, nil
 	}
+	s.Log.Error().Str("switch ip", switchIP).Msg("failed to find vlan for switch ip")
 	return 0, errors.New("switch ip not found")
 }

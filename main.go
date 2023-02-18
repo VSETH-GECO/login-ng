@@ -23,15 +23,33 @@ var (
 	mysqlUser     = flag.String("mysql-user", os.Getenv("MYSQL_DB_USER"), "MySQL database user (required)")
 	mysqlPassword = flag.String("mysql-pw", os.Getenv("MYSQL_DB_PW"), "MySQL database user password (required)")
 
-	gecoAPIurl = flag.String("geco-api-url", os.Getenv("GECO_API_URL"), "Geco API URL (required)")
-	gecoAPIkey = flag.String("geco-api-key", os.Getenv("GECO_API_KEY"), "Geco API key (required)")
+	oidcIssuer       = flag.String("oidc-issuer", os.Getenv("OIDC_ISSUER"), "Geco OIDC Provider (required)")
+	oidcRedirectURL  = flag.String("oidc-redirect-url", os.Getenv("OIDC_REDIRECT_URL"), "Geco OIDC Redirect URL (required)")
+	oidcClientID     = flag.String("oidc-client-id", os.Getenv("OIDC_CLIENT_ID"), "Geco OIDC Client ID (required)")
+	oidcClientSecret = flag.String("oidc-client-secret", os.Getenv("OIDC_CLIENT_SECRET"), "Geco OIDC Client secret (required)")
+
+	gecoAPILanID                 = flag.String("geco-lan-id", os.Getenv("GECO_LAN_ID"), "Geco LAN ID (required). The id of the LAN event instance on the website.")
+	gecoAPIUserstatusEndpointFmt = flag.String("geco-userstatus-endpoint", os.Getenv("GECO_USERSTATUS_ENDPOINT"), "Geco user status endpoint format (required). Geco API endpoint as specified on https://geco.ethz.ch/api/v1#/paths/api-v1-lan_parties-id--me/get.")
+
+	sessionSecret = flag.String("session-secret", os.Getenv("SESSION_SECRET"), "Session secret (required). It is recommended to use a session key with 32 or 64 bytes.")
 
 	listenFlag = flag.String("listen", ":8080", "Where the HTTP server should listen.")
 )
 
 func main() {
 	flag.Parse()
-	if len(*mysqlServer) == 0 || len(*mysqlPort) == 0 || len(*mysqlDatabase) == 0 || len(*mysqlUser) == 0 || len(*mysqlPassword) == 0 || len(*gecoAPIurl) == 0 || len(*gecoAPIkey) == 0 {
+	if len(*mysqlServer) == 0 ||
+		len(*mysqlPort) == 0 ||
+		len(*mysqlDatabase) == 0 ||
+		len(*mysqlUser) == 0 ||
+		len(*mysqlPassword) == 0 ||
+		len(*oidcIssuer) == 0 ||
+		len(*oidcRedirectURL) == 0 ||
+		len(*oidcClientID) == 0 ||
+		len(*oidcClientSecret) == 0 ||
+		len(*gecoAPILanID) == 0 ||
+		len(*gecoAPIUserstatusEndpointFmt) == 0 ||
+		len(*sessionSecret) == 0 {
 		log.Fatal().Msg("missing required arguments")
 	}
 
@@ -54,14 +72,52 @@ func main() {
 	openDBCtx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	db, err := server.OpenDB(openDBCtx, *mysqlUser, *mysqlPassword, *mysqlServer, *mysqlPort, *mysqlDatabase)
 	if err != nil {
-		logger.Fatal().Err(err).Str("server", *mysqlServer).Str("port", *mysqlPort).Str("database", *mysqlDatabase).Str("user", *mysqlUser).Msg("Failed to open connection to DB.")
+		logger.
+			Fatal().
+			Err(err).
+			Str("server", *mysqlServer).
+			Str("port", *mysqlPort).
+			Str("database", *mysqlDatabase).
+			Str("user", *mysqlUser).
+			Msg("Failed to open connection to DB.")
 	}
 	cancel()
 	logger.Info().Msgf("Connected to database: %v:%v/%v", *mysqlServer, *mysqlPort, *mysqlDatabase)
 
+	// Create OIDC provider
+	oidcProvider, err := server.NewOIDCProvider(
+		logger.With().Str("component", "oidc").Logger(),
+		*oidcIssuer,
+		*oidcRedirectURL,
+		*oidcClientID,
+		*oidcClientSecret,
+	)
+	if err != nil {
+		logger.
+			Fatal().
+			Err(err).
+			Str("server", *mysqlServer).
+			Str("port", *mysqlPort).
+			Str("database", *mysqlDatabase).
+			Str("user", *mysqlUser).
+			Msg("Failed to create OIDC provider.")
+	}
+
+	// assemble geco API config
+	gecoAPIConfig := &server.GecoAPIConfig{
+		LanID:                 *gecoAPILanID,
+		UserstatusEndpointFmt: *gecoAPIUserstatusEndpointFmt,
+	}
+
 	// Setup server
 	sl := logger.With().Str("component", "server").Logger()
-	s := server.Server{Log: sl, DB: db, GecoAPIurl: *gecoAPIurl, GecoAPIkey: *gecoAPIkey}
+	s := server.Server{
+		Log:           sl,
+		DB:            db,
+		OIDCProvider:  oidcProvider,
+		GecoAPIConfig: gecoAPIConfig,
+		SessionSecret: *sessionSecret,
+	}
 
-	logger.Fatal().Err(s.ListenAndServe(*listenFlag))
+	logger.Fatal().Err(s.ListenAndServe(*listenFlag)).Msg("Failed.")
 }

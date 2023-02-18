@@ -1,4 +1,5 @@
-{{define "layout"}}
+{{/* header */}}
+{{define "header"}}
 <!DOCTYPE html>
 <html lang="en" >
 <head>
@@ -18,8 +19,22 @@
                             <div class="text-center mb-4">
                                 <img src="/static/images/polylan.png" class="img-fluid" alt="polylan logo">
                             </div>
+{{end}}
 
-                            {{template "content" .}}
+{{/* error */}}
+{{define "error"}}
+    {{if .}}
+        {{if .error}}
+        <div class="alert alert-danger" role="alert">
+            <h4 class="alert-heading">Error</h4>
+            <p>{{.error}}</p>
+        </div>
+        {{end}}
+    {{end}}
+{{end}}
+
+{{/* footer */}}
+{{define "footer"}}
                         </div>
                     </div>
                 </div>
