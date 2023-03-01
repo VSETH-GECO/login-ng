@@ -33,6 +33,15 @@
     {{end}}
 {{end}}
 
+{{/* username */}}
+{{define "username"}}
+    {{if .}}
+        {{if .username}}
+            <h3>Hi {{.username}},</h3>
+        {{end}}
+    {{end}}
+{{end}}
+
 {{/* footer */}}
 {{define "footer"}}
                         </div>

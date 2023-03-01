@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	scopePolylan = "user:lan:read"
+	oidcScopePolylan = "user:lan:read"
 )
 
 type OIDCProvider struct {
@@ -39,7 +39,7 @@ func NewOIDCProvider(log zerolog.Logger, issuer, redirectURL, clientID, clientSe
 		// Discovery returns the OAuth2 endpoints.
 		Endpoint: provider.Endpoint(),
 		// "openid" is a required scope for OpenID Connect flows.
-		Scopes: []string{oidc.ScopeOpenID, scopePolylan},
+		Scopes: []string{oidc.ScopeOpenID, oidcScopePolylan},
 	}
 
 	return &OIDCProvider{
@@ -127,8 +127,18 @@ func CallbackHandler(auth *OIDCProvider, postLoginRedirectURL string) gin.Handle
 			return
 		}
 
-		session.Set("access_token", token.AccessToken)
-		session.Set("sub", idToken.Subject)
+		var claims struct {
+			Username string `json:"username"`
+		}
+		if err := idToken.Claims(&claims); err != nil {
+			auth.log.Error().Msg("failed to parse custom claims")
+			renderError(ctx, "login.gohtml", http.StatusInternalServerError, "Failed to get parse custom claims.")
+			return
+		}
+
+		session.Set(sessionUserAccessToken, token.AccessToken)
+		session.Set(sessionUserSub, idToken.Subject)
+		session.Set(sessionUserName, claims.Username)
 		if err := session.Save(); err != nil {
 			auth.log.Error().Err(err).Msg("failed to save session")
 			renderError(ctx, "login.gohtml", http.StatusInternalServerError, err.Error())
@@ -140,7 +150,7 @@ func CallbackHandler(auth *OIDCProvider, postLoginRedirectURL string) gin.Handle
 }
 
 func IsAuthenticatedMiddleware(ctx *gin.Context) {
-	if sessions.Default(ctx).Get("sub") == nil {
+	if sessions.Default(ctx).Get(sessionUserSub) == nil {
 		ctx.Redirect(http.StatusSeeOther, "/")
 	} else {
 		ctx.Next()

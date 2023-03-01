@@ -11,6 +11,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	sessionUserSub         = "sub"
+	sessionUserName        = "username"
+	sessionUserAccessToken = "access_token"
+)
+
 type GecoAPIConfig struct {
 	LanID                 string
 	UserstatusEndpointFmt string
@@ -19,14 +25,14 @@ type GecoAPIConfig struct {
 // see https://geco.ethz.ch/api/v1#/paths/api-v1-lan_parties-id--me/get
 func (s *Server) userIsCheckedin(ctx *gin.Context) error {
 	session := sessions.Default(ctx)
-	sub := session.Get("sub").(string)
+	sub := session.Get(sessionUserSub).(string)
 	log := s.Log.With().Str("sub", sub).Logger()
 
 	client := &http.Client{Transport: &http.Transport{
 		TLSClientConfig: &tls.Config{},
 	}}
 
-	accessToken := session.Get("access_token").(string)
+	accessToken := session.Get(sessionUserAccessToken).(string)
 	userstatusURL := fmt.Sprintf(s.GecoAPIConfig.UserstatusEndpointFmt, s.GecoAPIConfig.LanID)
 	req, err := http.NewRequestWithContext(ctx.Request.Context(), http.MethodGet, userstatusURL, nil)
 	if err != nil {

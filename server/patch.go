@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,7 +22,10 @@ func patchHandler(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		ctx.HTML(http.StatusOK, "success.gohtml", nil)
+		session := sessions.Default(ctx)
+		ctx.HTML(http.StatusOK, "success.gohtml", gin.H{
+			"username": session.Get(sessionUserName),
+		})
 	}
 }
 

@@ -80,7 +80,14 @@ func readinessHandler(s *Server) gin.HandlerFunc {
 }
 
 func renderError(ctx *gin.Context, page string, code int, msg string) {
-	ctx.HTML(code, page, gin.H{
+	pageContent := gin.H{
 		"error": msg,
-	})
+	}
+
+	session := sessions.Default(ctx)
+	if uname := session.Get(sessionUserName); uname != nil {
+		pageContent["username"] = uname
+	}
+
+	ctx.HTML(code, page, pageContent)
 }
