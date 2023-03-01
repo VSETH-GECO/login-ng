@@ -42,18 +42,21 @@ func (s *Server) ListenAndServe(listen string) error {
 
 	r.GET("/", func(ctx *gin.Context) {
 		// TODO check source IP/session to either login/switch
-		ctx.HTML(http.StatusOK, "login.gohtml", nil)
+
+		session := sessions.Default(ctx)
+		ctx.HTML(http.StatusOK, "index.gohtml", gin.H{
+			"isAuthenticated": session.Get(sessionUserSub) != nil,
+		})
 	})
 
 	r.GET("/login", LoginHandler(s.OIDCProvider))
 	r.GET("/callback", CallbackHandler(s.OIDCProvider, "/patch"))
 	r.GET("/patch", IsAuthenticatedMiddleware, patchHandler(s))
+	r.GET("/logout", LogoutHandler(s.OIDCProvider))
 
 	r.GET("/switch", IsAuthenticatedMiddleware, switchVLANHandler(s))
 	r.POST("/switch", IsAuthenticatedMiddleware, switchVLANSubmitHandler(s))
 	r.GET("/switch/success", IsAuthenticatedMiddleware, switchVLANSuccessHandler(s))
-
-	// TODO maybe add logout route
 
 	r.GET("/liveness", livenessHandler(s))
 	r.GET("/readiness", readinessHandler(s))

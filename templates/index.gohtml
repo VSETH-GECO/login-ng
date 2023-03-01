@@ -1,0 +1,21 @@
+{{template "header"}}
+
+{{template "error" .}}
+
+{{if .isAuthenticated}}
+    <form action="/logout">
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Logout</button>
+    </form>
+{{else}}
+    <form action="/login">
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Login</button>
+    </form>
+{{end}}
+
+{{/* TODO
+<form action="/switch">
+    <button type="submit" class="btn btn-primary btn-lg btn-block">Switch VLAN</button>
+</form>
+*/}}
+
+{{template "footer"}}

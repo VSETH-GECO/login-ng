@@ -75,13 +75,13 @@ func LoginHandler(auth *OIDCProvider) gin.HandlerFunc {
 		state, err := randString(16)
 		if err != nil {
 			auth.log.Error().Err(err).Msg("failed to generate state")
-			renderError(ctx, "login.gohtml", http.StatusInternalServerError, "Internal error")
+			renderError(ctx, "index.gohtml", http.StatusInternalServerError, "Internal error")
 			return
 		}
 		nonce, err := randString(16)
 		if err != nil {
 			auth.log.Error().Err(err).Msg("failed to generate nonce")
-			renderError(ctx, "login.gohtml", http.StatusInternalServerError, "Internal error")
+			renderError(ctx, "index.gohtml", http.StatusInternalServerError, "Internal error")
 			return
 		}
 
@@ -90,7 +90,7 @@ func LoginHandler(auth *OIDCProvider) gin.HandlerFunc {
 		session.Set("nonce", nonce)
 		if err := session.Save(); err != nil {
 			auth.log.Error().Err(err).Msg("failed to save session")
-			renderError(ctx, "login.gohtml", http.StatusInternalServerError, err.Error())
+			renderError(ctx, "index.gohtml", http.StatusInternalServerError, err.Error())
 			return
 		}
 
@@ -103,27 +103,27 @@ func CallbackHandler(auth *OIDCProvider, postLoginRedirectURL string) gin.Handle
 		session := sessions.Default(ctx)
 		if ctx.Query("state") != session.Get("state") {
 			auth.log.Error().Msg("invalid state parameter")
-			renderError(ctx, "login.gohtml", http.StatusBadRequest, "Invalid state parameter.")
+			renderError(ctx, "index.gohtml", http.StatusBadRequest, "Invalid state parameter.")
 			return
 		}
 
 		token, err := auth.Exchange(ctx.Request.Context(), ctx.Query("code"))
 		if err != nil {
 			auth.log.Error().Err(err).Msg("failed to exchange code")
-			renderError(ctx, "login.gohtml", http.StatusUnauthorized, "Failed to exchange an authorization code for a token.")
+			renderError(ctx, "index.gohtml", http.StatusUnauthorized, "Failed to exchange an authorization code for a token.")
 			return
 		}
 
 		idToken, err := auth.VerifyIDToken(ctx.Request.Context(), token)
 		if err != nil {
 			auth.log.Error().Err(err).Msg("failed to verify token")
-			renderError(ctx, "login.gohtml", http.StatusInternalServerError, "Failed to verify ID Token.")
+			renderError(ctx, "index.gohtml", http.StatusInternalServerError, "Failed to verify ID Token.")
 			return
 		}
 
 		if idToken.Nonce != session.Get("nonce") {
 			auth.log.Error().Msg("invalid nonce parameter")
-			renderError(ctx, "login.gohtml", http.StatusBadRequest, "Invalid nonce parameter.")
+			renderError(ctx, "index.gohtml", http.StatusBadRequest, "Invalid nonce parameter.")
 			return
 		}
 
@@ -132,7 +132,7 @@ func CallbackHandler(auth *OIDCProvider, postLoginRedirectURL string) gin.Handle
 		}
 		if err := idToken.Claims(&claims); err != nil {
 			auth.log.Error().Msg("failed to parse custom claims")
-			renderError(ctx, "login.gohtml", http.StatusInternalServerError, "Failed to get parse custom claims.")
+			renderError(ctx, "index.gohtml", http.StatusInternalServerError, "Failed to get parse custom claims.")
 			return
 		}
 
@@ -141,11 +141,27 @@ func CallbackHandler(auth *OIDCProvider, postLoginRedirectURL string) gin.Handle
 		session.Set(sessionUserName, claims.Username)
 		if err := session.Save(); err != nil {
 			auth.log.Error().Err(err).Msg("failed to save session")
-			renderError(ctx, "login.gohtml", http.StatusInternalServerError, err.Error())
+			renderError(ctx, "index.gohtml", http.StatusInternalServerError, err.Error())
 			return
 		}
 
 		ctx.Redirect(http.StatusTemporaryRedirect, postLoginRedirectURL)
+	}
+}
+
+func LogoutHandler(auth *OIDCProvider) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		session := sessions.Default(ctx)
+
+		session.Clear()
+
+		if err := session.Save(); err != nil {
+			auth.log.Error().Err(err).Msg("failed to save session")
+			renderError(ctx, "index.gohtml", http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		ctx.Redirect(http.StatusTemporaryRedirect, "/")
 	}
 }
 
