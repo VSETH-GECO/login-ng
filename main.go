@@ -38,18 +38,28 @@ var (
 
 func main() {
 	flag.Parse()
-	if len(*mysqlServer) == 0 ||
-		len(*mysqlPort) == 0 ||
-		len(*mysqlDatabase) == 0 ||
-		len(*mysqlUser) == 0 ||
-		len(*mysqlPassword) == 0 ||
-		len(*oidcIssuer) == 0 ||
-		len(*oidcRedirectURL) == 0 ||
-		len(*oidcClientID) == 0 ||
-		len(*oidcClientSecret) == 0 ||
-		len(*gecoAPILanID) == 0 ||
-		len(*gecoAPIUserstatusEndpointFmt) == 0 ||
-		len(*sessionSecret) == 0 {
+	args := map[string]string{
+		"mysql-server":             *mysqlServer,
+		"mysql-port":               *mysqlPort,
+		"mysql-name":               *mysqlDatabase,
+		"mysql-user":               *mysqlUser,
+		"mysql-pw":                 *mysqlPassword,
+		"oidc-issuer":              *oidcIssuer,
+		"oidc-redirect-url":        *oidcRedirectURL,
+		"oidc-client-id":           *oidcClientID,
+		"oidc-client-secret":       *oidcClientSecret,
+		"geoc-lan-id":              *gecoAPILanID,
+		"geoc-userstatus-endpoint": *gecoAPIUserstatusEndpointFmt,
+		"session-secret":           *sessionSecret,
+	}
+	argMissing := false
+	for argName, argValue := range args {
+		if len(argValue) == 0 {
+			argMissing = true
+			log.Error().Msgf("missing required argument: %s", argName)
+		}
+	}
+	if argMissing {
 		log.Fatal().Msg("missing required arguments")
 	}
 
