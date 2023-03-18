@@ -101,3 +101,9 @@ See https://lan.h4ck.ch/api/v1#/paths/api-v1-lan_parties-id--me/get
   "message": "User has no ticket assigned for this LanParty"
 }
 ```
+
+## Network
+
+To make this app reachable from within the special VLAN you have to configure the HAProxy on the PfSense ath two locations:
+* Set`Services > HAProxy > Backend > redirect (edit) > Advanced settings >  Backend pass thru ` to `http-request redirect code 301 location https://login-ng.lan.geco.ethz.ch`.
+* Whitelist the app in `Services > HAProxy > Fronteend > HTTP (edit) > Default backend` under `Access Control lists` and `Actions`.
