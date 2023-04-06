@@ -33,6 +33,9 @@ func (s *Server) patchIntoVLAN(ctx *gin.Context) error {
 	// find source switch
 	// TODO maybe use 'X-Forwarded-For'
 	userIP := strings.Split(ctx.Request.RemoteAddr, ":")[0]
+	if xff, ok := ctx.Request.Header["X-Forwarded-For"]; ok {
+		userIP = xff[0]
+	}
 	up, err := s.locateUser(ctx.Request.Context(), userIP)
 	if err != nil {
 		s.Log.Error().Err(err).Str("user IP", userIP).Msg("failed to find source switch")
