@@ -54,9 +54,24 @@ func (s *Server) patchIntoVLAN(ctx *gin.Context) error {
 	// create bounce job
 	err = s.createNewBounceJob(ctx.Request.Context(), up.userMAC, targetVLAN)
 	if err != nil {
-		s.Log.Error().Err(err).Str("user MAC", up.userMAC).Int("target VLAN", targetVLAN).Msg("failed to create a new bounce job")
+		s.Log.Error().Err(err).
+			Str("user MAC", up.userMAC).
+			Int("target VLAN", targetVLAN).
+			Msg("failed to create a new bounce job")
 		renderError(ctx, "index.gohtml", http.StatusInternalServerError, "Internal Server Error: Please contact the support.")
 		return err
+	}
+
+	// log
+	session := sessions.Default(ctx)
+	username := session.Get(sessionUserName).(string)
+	err = s.createNewLoginLog(ctx.Request.Context(), username, up.userMAC)
+	if err != nil {
+		s.Log.Error().Err(err).
+			Str("username", username).
+			Str("user MAC", up.userMAC).
+			Msg("failed to log login")
+		// ignore error as its only logging
 	}
 
 	return nil

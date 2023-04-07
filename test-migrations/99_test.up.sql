@@ -25,6 +25,17 @@ CREATE TABLE lease4 (
     hwaddr VARCHAR(32) NOT NULL
 );
 
+CREATE TABLE login_logs (
+    id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    username varchar(255) NULL,
+    mac varchar(255) NULL,
+    KEY idx_date (`created_at`),
+    KEY idx_name (`username`),
+    KEY idx_mac (`mac`)
+);
+
 -- 127.0.0.1 -> 127 * 2**24 + 0 * 2**16 + 0 * 2**8 + 1 * 2**0
 -- 61:62:63:64:65:66 -> abcdef
 INSERT INTO

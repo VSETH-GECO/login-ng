@@ -73,3 +73,17 @@ func (s *Server) createNewBounceJob(ctx context.Context, clientMAC string, targe
 	}
 	return nil
 }
+
+const qInsertLoginLog = `INSERT INTO login_logs(username, mac) VALUES(?, ?);`
+
+func (s *Server) createNewLoginLog(ctx context.Context, username string, clientMAC string) error {
+	_, err := s.DB.ExecContext(ctx, qInsertLoginLog, username, clientMAC)
+	if err != nil {
+		s.Log.Error().Err(err).
+			Str("username", username).
+			Str("clientMac", clientMAC).
+			Msg("Failed to insert login log into database.")
+		return err
+	}
+	return nil
+}
