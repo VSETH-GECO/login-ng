@@ -31,7 +31,6 @@ func patchHandler(s *Server) gin.HandlerFunc {
 
 func (s *Server) patchIntoVLAN(ctx *gin.Context) error {
 	// find source switch
-	// TODO maybe use 'X-Forwarded-For'
 	userIP := strings.Split(ctx.Request.RemoteAddr, ":")[0]
 	if xff, ok := ctx.Request.Header["X-Forwarded-For"]; ok {
 		userIP = xff[0]
@@ -44,7 +43,7 @@ func (s *Server) patchIntoVLAN(ctx *gin.Context) error {
 	}
 
 	// map switch to vlan
-	targetVLAN, err := s.translateSwitchIPtoVLAN(ctx.Request.Context(), up.switchIP)
+	targetVLAN, err := s.getSwitchVLAN(ctx.Request.Context(), up.switchIP)
 	if err != nil {
 		s.Log.Error().Err(err).Str("switch IP", up.switchIP).Msg("VLAN for switch not found")
 		renderError(ctx, "index.gohtml", http.StatusInternalServerError, "Unkown switch IP")

@@ -36,6 +36,22 @@ CREATE TABLE login_logs (
     KEY idx_mac (`mac`)
 );
 
+CREATE TABLE bouncer_switch_map (
+    id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    primary_vlan INTEGER NOT NULL UNIQUE,
+    hostname varchar(255) NOT NULL,
+    location varchar(255) NULL,
+    KEY idx_vlan (`primary_vlan`)
+);
+
+CREATE TABLE bouncer_switch_ip (
+    id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    switch_id INTEGER NOT NULL REFERENCES bouncer_switch_map(id),
+    ip varchar(255) NOT NULL,
+    KEY idx_ip (`ip`),
+    KEY idx_switch_id (`switch_id`)
+);
+
 -- 127.0.0.1 -> 127 * 2**24 + 0 * 2**16 + 0 * 2**8 + 1 * 2**0
 -- 61:62:63:64:65:66 -> abcdef
 INSERT INTO
@@ -48,6 +64,16 @@ INSERT INTO
 VALUES
     ("616263646566", "10.233.254.27", NULL);
 
+INSERT INTO
+    bouncer_switch_map(id, primary_vlan, hostname, location)
+VALUES
+    (1, 527, "user27.lan.geco.ethz.ch", "test");
+
+INSERT INTO
+    bouncer_switch_ip(switch_id, ip)
+VALUES
+    (1, "10.233.254.27");
+
 -- +migrate Down
 DROP TABLE lease4;
 
@@ -56,3 +82,9 @@ DROP TABLE radacct;
 DROP TABLE users;
 
 DROP TABLE bouncer_jobs;
+
+DROP TABLE login_logs;
+
+DROP TABLE bouncer_switch_map;
+
+DROP TABLE bouncer_switch_ip;

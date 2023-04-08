@@ -87,3 +87,27 @@ func (s *Server) createNewLoginLog(ctx context.Context, username string, clientM
 	}
 	return nil
 }
+
+const qGetSwitchVLAN = `
+SELECT primary_vlan AS vlan
+FROM bouncer_switch_ip AS ip
+JOIN bouncer_switch_map AS map ON ip.switch_id = map.id
+WHERE ip=?;`
+
+func (s *Server) getSwitchVLAN(ctx context.Context, switchIP string) (int, error) {
+	var vlan int
+	err := s.DB.QueryRowContext(ctx, qGetSwitchVLAN, switchIP).Scan(&vlan)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			s.Log.Error().Err(err).
+				Str("switch ip", switchIP).
+				Msg("failed to get vlan")
+			return -1, errors.New("vlan not found")
+		}
+		s.Log.Error().Err(err).
+			Str("switch IP", switchIP).
+			Msg("Failed to getch switch VLAN")
+		return -1, fmt.Errorf("failed to get switch vlan: %w", err)
+	}
+	return vlan, nil
+}
