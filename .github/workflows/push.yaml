@@ -37,13 +37,12 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Update k8s repo
-        uses: mvasigh/dispatch-action@1.1.6
+        uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-          repo: k8s
-          owner: VSETH-GECO
-          event_type: login-ng
-          message: |
+          repository: VSETH-GECO/k8s
+          event-type: login-ng
+          client-payload: |
             {
               "tag": "${{ env.SHORT_SHA }}"
             }
