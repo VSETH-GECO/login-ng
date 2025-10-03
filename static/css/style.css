@@ -1,0 +1,103 @@
+/* 1. Global Background (Full-screen dark, high-energy) */
+body {
+  /* Override Bootstrap's body background if needed, but the section handles it here */
+  font-family: "Consolas", "Courier New", monospace; /* Techy font */
+}
+
+/* Target the main section's background style */
+.vh-100 {
+  /* Deep, saturated, dark background using a radial gradient for focus */
+  background: radial-gradient(
+    circle at center,
+    #1a0000 0%,
+    #0a0000 70%,
+    #000000 100%
+  );
+  position: relative;
+  overflow: hidden;
+}
+
+/* 2. Login Card Styling (Industrial/Tech Look) */
+.card {
+  /* Dark Card Color */
+  background-color: #0d0d0d !important;
+  color: #f0f0f0;
+
+  /* Sharper border-radius for tech/industrial feel */
+  border-radius: 0.5rem !important;
+
+  /* Neon Red Border and Glow (Override shadow-2-strong) */
+  border: 1px solid #ff0000 !important;
+  box-shadow: 0 0 25px rgba(255, 0, 0, 0.7), 0 0 10px rgba(255, 0, 0, 0.4) !important;
+  transition: all 0.3s ease-in-out;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 35px rgba(255, 0, 0, 0.9), 0 0 15px rgba(255, 0, 0, 0.6) !important;
+}
+
+/* 3. Image Styling */
+.img-fluid {
+  width: 100%;
+  max-width: 400px; /* Control size */
+  height: auto;
+  /* Add a complementary logo glow */
+  filter: drop-shadow(0 0 12px rgba(255, 0, 0, 0.8));
+  transition: filter 0.3s;
+}
+
+/* 4. Button Styling (High-Contrast Command Button) */
+/* Target the Bootstrap Primary Button */
+.btn-primary {
+  background-color: #ff0000 !important; /* Solid Red */
+  border-color: #ff0000 !important;
+  color: #000000 !important; /* Black text for maximum contrast on red */
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 1rem 3rem; /* Larger hit area */
+  border-radius: 4px; /* Slightly sharper corners */
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(255, 0, 0, 0.5);
+}
+
+.btn-primary:hover {
+  background-color: #cc0000 !important; /* Slightly darker red on hover */
+  border-color: #cc0000 !important;
+  /* Stronger hover glow */
+  box-shadow: 0 4px 20px rgba(255, 0, 0, 0.8);
+  transform: translateY(-1px);
+}
+
+/* Futuristic Swipe/Glare effect on hover */
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 50%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.25);
+  transform: skewX(-20deg);
+  transition: left 0.6s ease;
+}
+
+.btn-primary:hover::after {
+  left: 150%;
+}
+
+/* 5. Error Message Styling */
+.alert-danger {
+  /* Match the theme */
+  background-color: #3d0000 !important;
+  color: #ffcccc !important;
+  border-color: #ff0000 !important;
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+}
+
+.alert-danger .alert-heading {
+  color: #ff6666 !important;
+}

@@ -3,8 +3,13 @@
 {{template "username" .}}
 
 <div class="alert alert-success" role="alert">
-    <h4 class="alert-heading">You have been patched successfully!</h4>
-    <p>Please allow up to 5 min for the internet to connect. If it does not work after 5 min unplug and plug your port back in!</p>
+    <h4 class="alert-heading">You have been successfully connected to the network!</h4>
+    <p>Please allow up to 5 min for the internet to connect. If it does not work after 5 min unplug and plug your port
+        back in!</p>
 </div>
+
+<form action="/">
+    <button type="submit" class="btn btn-primary btn-lg btn-block">OK</button>
+</form>
 
 {{template "footer"}}

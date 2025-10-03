@@ -3,12 +3,17 @@
 {{template "error" .}}
 
 {{if .isAuthenticated}}
+
+{{template "username" .}}
+
     <form action="/logout">
-        <button type="submit" class="btn btn-primary btn-lg btn-block">Logout</button>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Disconnect</button>
     </form>
 {{else}}
+    <h3>Welcome to PolyLAN!</h3>
+
     <form action="/login">
-        <button type="submit" class="btn btn-primary btn-lg btn-block">Login</button>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Connect</button>
     </form>
 {{end}}
 

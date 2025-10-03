@@ -46,6 +46,7 @@ func (s *Server) ListenAndServe(listen string) error {
 		session := sessions.Default(ctx)
 		ctx.HTML(http.StatusOK, "index.gohtml", gin.H{
 			"isAuthenticated": session.Get(sessionUserSub) != nil,
+			"username": session.Get(sessionUserName),
 		})
 	})
 
