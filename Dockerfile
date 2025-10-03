@@ -1,4 +1,4 @@
-FROM golang:1.19-alpine AS build
+FROM golang:1.25-alpine AS build
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ COPY server server
 
 RUN go build -o /login .
 
-FROM alpine:3.16
+FROM alpine:3.22
 
 WORKDIR /app
 
