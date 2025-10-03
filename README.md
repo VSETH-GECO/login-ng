@@ -7,6 +7,7 @@ Small go app for a simple login page to authenticate users during the Lan.
 When a user first connects to the PolyLAN network, they are patched into a special VLAN where only this app is reachable. The user can then login with their GeCo credentials and can access the internet.
 
 This works, as this app
+
 * authenticates the user,
 * finds the switch the user is plugged into,
 * resolves the VLAN assigned to this switch and then
@@ -17,10 +18,10 @@ The bouncer (dedicated app) is looking for bounce jobs and bounces the port on t
 ## Development
 
 ```bash
-$ docker-compose up -d db
-$ go install github.com/rubenv/sql-migrate/...@latest
-$ sql-migrate up -config test-migrations/dbconfig.yml
-$ go run . \
+docker-compose up -d db
+go install github.com/rubenv/sql-migrate/...@latest
+sql-migrate up -config test-migrations/dbconfig.yml
+go run . \
     -mysql-server localhost \
     -mysql-port 3306 \
     -mysql-name freeradius \
@@ -77,7 +78,7 @@ The `access_token` can be used to query the GECo API.
 
 ### Example GECo API user status response
 
-See https://lan.h4ck.ch/api/v1#/paths/api-v1-lan_parties-id--me/get
+See <https://lan.h4ck.ch/api/v1#/paths/api-v1-lan_parties-id--me/get>
 
 * Ticket bought and checked in (status code 200):
 
@@ -104,6 +105,7 @@ See https://lan.h4ck.ch/api/v1#/paths/api-v1-lan_parties-id--me/get
 
 ## Network
 
-To make this app reachable from within the special VLAN you have to configure the HAProxy on the PfSense ath two locations:
-* Set`Services > HAProxy > Backend > redirect (edit) > Advanced settings >  Backend pass thru ` to `http-request redirect code 301 location https://login-ng.lan.geco.ethz.ch`.
+To make this app reachable from within the special VLAN you have to configure the HAProxy on the PfSense at two locations:
+
+* Set`Services > HAProxy > Backend > redirect (edit) > Advanced settings >  Backend pass thru` to `http-request redirect code 301 location https://login-ng.lan.geco.ethz.ch`.
 * Whitelist the app in `Services > HAProxy > Fronteend > HTTP (edit) > Default backend` under `Access Control lists` and `Actions`.

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"net/url"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-contrib/sessions"
@@ -49,7 +48,7 @@ func NewOIDCProvider(log zerolog.Logger, issuer, redirectURL, clientID, clientSe
 	}, nil
 }
 
-func (a *OIDCProvider) VerifyIDToken(ctx context.Context, token *oauth2.Token) (*oidc.IDToken, error) {
+func (a *OIDCProvider) verifyIDToken(ctx context.Context, token *oauth2.Token) (*oidc.IDToken, error) {
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok {
 		return nil, errors.New("no id_token field in oauth2 token")
@@ -60,14 +59,6 @@ func (a *OIDCProvider) VerifyIDToken(ctx context.Context, token *oauth2.Token) (
 	}
 
 	return a.Verifier(oidcConfig).Verify(ctx, rawIDToken)
-}
-
-func (a *OIDCProvider) GetCallbackPath() (string, error) {
-	callpackURL, err := url.Parse(a.RedirectURL)
-	if err != nil {
-		return "", err
-	}
-	return callpackURL.Path, nil
 }
 
 func LoginHandler(auth *OIDCProvider) gin.HandlerFunc {
@@ -114,7 +105,7 @@ func CallbackHandler(auth *OIDCProvider, postLoginRedirectURL string) gin.Handle
 			return
 		}
 
-		idToken, err := auth.VerifyIDToken(ctx.Request.Context(), token)
+		idToken, err := auth.verifyIDToken(ctx.Request.Context(), token)
 		if err != nil {
 			auth.log.Error().Err(err).Msg("failed to verify token")
 			renderError(ctx, "index.gohtml", http.StatusInternalServerError, "Failed to verify ID Token.")

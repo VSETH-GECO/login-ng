@@ -40,15 +40,7 @@ func (s *Server) ListenAndServe(listen string) error {
 	r.Static("/static", "static")
 	r.LoadHTMLGlob("templates/*.gohtml")
 
-	r.GET("/", func(ctx *gin.Context) {
-		// TODO check source IP/session to either login/switch
-
-		session := sessions.Default(ctx)
-		ctx.HTML(http.StatusOK, "index.gohtml", gin.H{
-			"isAuthenticated": session.Get(sessionUserSub) != nil,
-			"username": session.Get(sessionUserName),
-		})
-	})
+	r.GET("/", indexHandler())
 
 	r.GET("/login", LoginHandler(s.OIDCProvider))
 	r.GET("/callback", CallbackHandler(s.OIDCProvider, "/patch"))
@@ -64,6 +56,18 @@ func (s *Server) ListenAndServe(listen string) error {
 
 	s.Log.Info().Str("addr", listen).Msg("Listening...")
 	return http.ListenAndServe(listen, r)
+}
+
+func indexHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		// TODO check source IP/session to either login/switch
+
+		session := sessions.Default(ctx)
+		ctx.HTML(http.StatusOK, "index.gohtml", gin.H{
+			"isAuthenticated": session.Get(sessionUserSub) != nil,
+			"username":        session.Get(sessionUserName),
+		})
+	}
 }
 
 // executed every few seconds in order to check the container status.
