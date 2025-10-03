@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"io"
@@ -17,6 +18,10 @@ import (
 
 const (
 	oidcScopePolylan = "user:lan:read"
+
+	sessionStateKey        = "state"
+	sessionNonceKey        = "nonce"
+	sessionCodeVerifierKey = "codeVerifier"
 )
 
 type OIDCProvider struct {
@@ -76,29 +81,48 @@ func LoginHandler(auth *OIDCProvider) gin.HandlerFunc {
 			return
 		}
 
+		codeVerifier, err := randString(16)
+		if err != nil {
+			auth.log.Error().Err(err).Msg("failed to generate code verifier")
+			renderError(ctx, "index.gohtml", http.StatusInternalServerError, "Internal error")
+		}
+		hash := sha256.New()
+		io.WriteString(hash, codeVerifier)
+		codeChallenge := base64.RawURLEncoding.EncodeToString(hash.Sum(nil))
+
 		session := sessions.Default(ctx)
-		session.Set("state", state)
-		session.Set("nonce", nonce)
+		session.Set(sessionStateKey, state)
+		session.Set(sessionNonceKey, nonce)
+		session.Set(sessionCodeVerifierKey, codeVerifier)
 		if err := session.Save(); err != nil {
 			auth.log.Error().Err(err).Msg("failed to save session")
 			renderError(ctx, "index.gohtml", http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		ctx.Redirect(http.StatusTemporaryRedirect, auth.AuthCodeURL(state, oidc.Nonce(nonce)))
+		ctx.Redirect(http.StatusTemporaryRedirect, auth.AuthCodeURL(
+			state,
+			oidc.Nonce(nonce),
+			oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+			oauth2.SetAuthURLParam("code_challenge", codeChallenge),
+		))
 	}
 }
 
 func CallbackHandler(auth *OIDCProvider, postLoginRedirectURL string) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		session := sessions.Default(ctx)
-		if ctx.Query("state") != session.Get("state") {
+		if ctx.Query("state") != session.Get(sessionStateKey) {
 			auth.log.Error().Msg("invalid state parameter")
 			renderError(ctx, "index.gohtml", http.StatusBadRequest, "Invalid state parameter.")
 			return
 		}
 
-		token, err := auth.Exchange(ctx.Request.Context(), ctx.Query("code"))
+		token, err := auth.Exchange(
+			ctx.Request.Context(),
+			ctx.Query("code"),
+			oauth2.SetAuthURLParam("code_verifier", session.Get(sessionCodeVerifierKey).(string)),
+		)
 		if err != nil {
 			auth.log.Error().Err(err).Msg("failed to exchange code")
 			renderError(ctx, "index.gohtml", http.StatusUnauthorized, "Failed to exchange an authorization code for a token.")
@@ -112,7 +136,7 @@ func CallbackHandler(auth *OIDCProvider, postLoginRedirectURL string) gin.Handle
 			return
 		}
 
-		if idToken.Nonce != session.Get("nonce") {
+		if idToken.Nonce != session.Get(sessionNonceKey) {
 			auth.log.Error().Msg("invalid nonce parameter")
 			renderError(ctx, "index.gohtml", http.StatusBadRequest, "Invalid nonce parameter.")
 			return
