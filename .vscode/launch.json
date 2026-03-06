@@ -14,8 +14,6 @@
         "MYSQL_DB_NAME": "freeradius",
         "MYSQL_DB_USER": "login",
         "MYSQL_DB_PW": "login",
-        "GECO_API_URL": "http://example.com:1234",
-        "GECO_API_KEY": "blub",
         "OIDC_ISSUER": "https://geco.ethz.ch",
         "OIDC_REDIRECT_URL": "https://localhost:8080",
         "OIDC_CLIENT_ID": "login-ng",
