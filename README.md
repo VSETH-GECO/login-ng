@@ -41,7 +41,7 @@ go run . \
 Connect to the database manually
 
 ```bash
-mysql -h localhost -P 3306 --database freeradius -ulogin -plogin
+mysql -h 127.0.0.1 -P 3306 --database freeradius -ulogin -plogin
 $ show tables;
 ```
 

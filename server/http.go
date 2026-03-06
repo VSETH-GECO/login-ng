@@ -43,13 +43,15 @@ func (s *Server) ListenAndServe(listen string) error {
 	r.GET("/", indexHandler())
 
 	r.GET("/login", LoginHandler(s.OIDCProvider))
-	r.GET("/callback", CallbackHandler(s.OIDCProvider, "/patch"))
-	r.GET("/patch", IsAuthenticatedMiddleware, patchHandler(s))
-	r.GET("/logout", LogoutHandler(s.OIDCProvider))
+	r.GET("/callback", CallbackHandler(s.OIDCProvider, "/connect"))
+	r.GET("/connect", RequireAuthenticated, RequiredCheckedIn(s), connectHandler(s))
 
-	r.GET("/switch", IsAuthenticatedMiddleware, switchVLANHandler(s))
-	r.POST("/switch", IsAuthenticatedMiddleware, switchVLANSubmitHandler(s))
-	r.GET("/switch/success", IsAuthenticatedMiddleware, switchVLANSuccessHandler(s))
+	r.GET("/logout", LogoutHandler(s.OIDCProvider, "/disconnect"))
+	r.GET("/disconnect", RequireAuthenticated, RequiredCheckedIn(s), disconnectHandler(s))
+
+	r.GET("/switch", RequireAuthenticated, switchVLANHandler(s))
+	r.POST("/switch", RequireAuthenticated, switchVLANSubmitHandler(s))
+	r.GET("/switch/success", RequireAuthenticated, switchVLANSuccessHandler(s))
 
 	r.GET("/liveness", livenessHandler(s))
 	r.GET("/readiness", readinessHandler(s))

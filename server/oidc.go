@@ -164,7 +164,7 @@ func CallbackHandler(auth *OIDCProvider, postLoginRedirectURL string) gin.Handle
 	}
 }
 
-func LogoutHandler(auth *OIDCProvider) gin.HandlerFunc {
+func LogoutHandler(auth *OIDCProvider, postLogoutRedirectURL string) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		session := sessions.Default(ctx)
 
@@ -176,11 +176,11 @@ func LogoutHandler(auth *OIDCProvider) gin.HandlerFunc {
 			return
 		}
 
-		ctx.Redirect(http.StatusTemporaryRedirect, "/")
+		ctx.Redirect(http.StatusTemporaryRedirect, postLogoutRedirectURL)
 	}
 }
 
-func IsAuthenticatedMiddleware(ctx *gin.Context) {
+func RequireAuthenticated(ctx *gin.Context) {
 	if sessions.Default(ctx).Get(sessionUserSub) == nil {
 		ctx.Redirect(http.StatusSeeOther, "/")
 	} else {
