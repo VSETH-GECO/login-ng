@@ -31,10 +31,7 @@ func connectHandler(s *Server) gin.HandlerFunc {
 
 func (s *Server) patchIntoSwitchVLAN(ctx *gin.Context) error {
 	// find source switch
-	userIP := strings.Split(ctx.Request.RemoteAddr, ":")[0]
-	if xff, ok := ctx.Request.Header["X-Forwarded-For"]; ok {
-		userIP = xff[0]
-	}
+	userIP := resolveUserIP(ctx.Request)
 	up, err := s.locateUser(ctx.Request.Context(), userIP)
 	if err != nil {
 		s.Log.Error().Err(err).Str("user IP", userIP).Msg("failed to find source switch")
@@ -50,11 +47,15 @@ func (s *Server) patchIntoSwitchVLAN(ctx *gin.Context) error {
 		return err
 	}
 
+	return s.patch(ctx, up.userMAC, targetVLAN)
+}
+
+func (s *Server) patch(ctx *gin.Context, userMAC string, targetVLAN int) error {
 	// create bounce job
-	err = s.createNewBounceJob(ctx.Request.Context(), up.userMAC, targetVLAN)
+	err := s.createNewBounceJob(ctx.Request.Context(), userMAC, targetVLAN)
 	if err != nil {
 		s.Log.Error().Err(err).
-			Str("user MAC", up.userMAC).
+			Str("user MAC", userMAC).
 			Int("target VLAN", targetVLAN).
 			Msg("failed to create a new bounce job")
 		renderError(ctx, "index.gohtml", http.StatusInternalServerError, "Internal Server Error: Please contact the support.")
@@ -64,16 +65,24 @@ func (s *Server) patchIntoSwitchVLAN(ctx *gin.Context) error {
 	// log
 	session := sessions.Default(ctx)
 	username := session.Get(sessionUserName).(string)
-	err = s.createNewLoginLog(ctx.Request.Context(), username, up.userMAC)
+	err = s.createNewLoginLog(ctx.Request.Context(), username, userMAC)
 	if err != nil {
 		s.Log.Error().Err(err).
 			Str("username", username).
-			Str("user MAC", up.userMAC).
-			Msg("failed to log login")
+			Str("user MAC", userMAC).
+			Msg("failed to log patch")
 		// ignore error as its only logging
 	}
 
 	return nil
+}
+
+func resolveUserIP(request *http.Request) string {
+	userIP := strings.Split(request.RemoteAddr, ":")[0]
+	if xff, ok := request.Header["X-Forwarded-For"]; ok {
+		userIP = xff[0]
+	}
+	return userIP
 }
 
 func switchVLANHandler(s *Server) gin.HandlerFunc {
