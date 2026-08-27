@@ -23,7 +23,7 @@ type GecoAPIConfig struct {
 }
 
 // see https://geco.ethz.ch/api/v1#/paths/api-v1-lan_parties-id--me/get
-func (s *Server) userIsCheckedin(ctx *gin.Context) error {
+func (s *Server) userIsCheckedIn(ctx *gin.Context) error {
 	session := sessions.Default(ctx)
 	sub := session.Get(sessionUserSub).(string)
 	log := s.Log.With().Str("sub", sub).Logger()

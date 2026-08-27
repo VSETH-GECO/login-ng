@@ -180,7 +180,7 @@ func LogoutHandler(auth *OIDCProvider) gin.HandlerFunc {
 	}
 }
 
-func IsAuthenticatedMiddleware(ctx *gin.Context) {
+func RequireAuthenticated(ctx *gin.Context) {
 	if sessions.Default(ctx).Get(sessionUserSub) == nil {
 		ctx.Redirect(http.StatusSeeOther, "/")
 	} else {

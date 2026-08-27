@@ -8,17 +8,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func patchHandler(s *Server) gin.HandlerFunc {
+func connectHandler(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		err := s.userIsCheckedin(ctx)
+		err := s.userIsCheckedIn(ctx)
 		if err != nil {
-			renderError(ctx, "patch.gohtml", http.StatusForbidden, err.Error())
+			renderError(ctx, "error.gohtml", http.StatusForbidden, err.Error())
 			return
 		}
 
-		err = s.patchIntoVLAN(ctx)
+		err = s.patchIntoSwitchVLAN(ctx)
 		if err != nil {
-			renderError(ctx, "patch.gohtml", http.StatusInternalServerError, "Failed to patch into the network.")
+			renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Failed to patch into the network.")
 			return
 		}
 
@@ -29,7 +29,7 @@ func patchHandler(s *Server) gin.HandlerFunc {
 	}
 }
 
-func (s *Server) patchIntoVLAN(ctx *gin.Context) error {
+func (s *Server) patchIntoSwitchVLAN(ctx *gin.Context) error {
 	// find source switch
 	userIP := strings.Split(ctx.Request.RemoteAddr, ":")[0]
 	if xff, ok := ctx.Request.Header["X-Forwarded-For"]; ok {
