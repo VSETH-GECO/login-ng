@@ -9,6 +9,10 @@
     <form action="/disconnect">
         <button type="submit" class="btn btn-primary btn-lg btn-block">Disconnect</button>
     </form>
+
+    <form action="/switch">
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Switch VLAN</button>
+    </form>
 {{else}}
     <h3>Welcome to PolyLAN!</h3>
 
@@ -16,11 +20,5 @@
         <button type="submit" class="btn btn-primary btn-lg btn-block">Connect</button>
     </form>
 {{end}}
-
-{{/* TODO
-<form action="/switch">
-    <button type="submit" class="btn btn-primary btn-lg btn-block">Switch VLAN</button>
-</form>
-*/}}
 
 {{template "footer"}}

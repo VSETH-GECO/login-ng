@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-contrib/sessions"
@@ -127,21 +128,97 @@ func resolveUserIP(request *http.Request) string {
 
 func switchVLANHandler(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		// TODO
-		ctx.String(http.StatusInternalServerError, "unimplemented")
+		userIP := resolveUserIP(ctx.Request)
+		up, err := s.locateUser(ctx.Request.Context(), userIP)
+		if err != nil {
+			s.Log.Error().Err(err).Str("user IP", userIP).Msg("failed to find source switch")
+			renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Unable to locate the switch the user is connected to.", "/switch")
+			return
+		}
+
+		primaryVLAN, err := s.getSwitchVLAN(ctx.Request.Context(), up.switchIP)
+		if err != nil {
+			s.Log.Error().Err(err).Str("switch IP", up.switchIP).Msg("VLAN for switch not found")
+			renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Unknown switch IP.", "/switch")
+			return
+		}
+
+		vlans, err := s.getAvailableVLANs(ctx.Request.Context(), primaryVLAN)
+		if err != nil {
+			s.Log.Error().Err(err).Int("primary VLAN", primaryVLAN).Msg("failed to get available VLANs")
+			renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Failed to load available VLANs.", "/switch")
+			return
+		}
+
+		session := sessions.Default(ctx)
+		ctx.HTML(http.StatusOK, "switch.gohtml", gin.H{
+			"vlans":    vlans,
+			"username": session.Get(sessionUserName),
+		})
 	}
 }
 
 func switchVLANSubmitHandler(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		// TODO
-		ctx.String(http.StatusInternalServerError, "unimplemented")
+		// parse submitted VLAN ID
+		vlanStr := ctx.PostForm("vlan")
+		targetVLAN, err := strconv.Atoi(vlanStr)
+		if err != nil || vlanStr == "" {
+			renderError(ctx, "error.gohtml", http.StatusBadRequest, "Invalid VLAN selection.", "/switch")
+			return
+		}
+
+		// resolve user IP → switch IP + MAC
+		userIP := resolveUserIP(ctx.Request)
+		up, err := s.locateUser(ctx.Request.Context(), userIP)
+		if err != nil {
+			s.Log.Error().Err(err).Str("user IP", userIP).Msg("failed to find source switch")
+			renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Unable to locate the switch the user is connected to.", "/switch")
+			return
+		}
+
+		// get primary VLAN for this switch
+		primaryVLAN, err := s.getSwitchVLAN(ctx.Request.Context(), up.switchIP)
+		if err != nil {
+			s.Log.Error().Err(err).Str("switch IP", up.switchIP).Msg("VLAN for switch not found")
+			renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Unknown switch IP.", "/switch")
+			return
+		}
+
+		// validate submitted VLAN is in the allowed list
+		vlans, err := s.getAvailableVLANs(ctx.Request.Context(), primaryVLAN)
+		if err != nil {
+			s.Log.Error().Err(err).Int("primary VLAN", primaryVLAN).Msg("failed to get available VLANs")
+			renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Failed to load available VLANs.", "/switch")
+			return
+		}
+		allowed := false
+		for _, v := range vlans {
+			if v.VLANID == targetVLAN {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			renderError(ctx, "error.gohtml", http.StatusBadRequest, "Selected VLAN is not available.", "/switch")
+			return
+		}
+
+		// create bounce job
+		if err := s.patch(ctx, up.userMAC, targetVLAN); err != nil {
+			return
+		}
+
+		ctx.Redirect(http.StatusSeeOther, "/switch/success")
 	}
 }
 
 func switchVLANSuccessHandler(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		// TODO
-		ctx.String(http.StatusInternalServerError, "unimplemented")
+		session := sessions.Default(ctx)
+		ctx.HTML(http.StatusOK, "success.gohtml", gin.H{
+			"switching": true,
+			"username":  session.Get(sessionUserName),
+		})
 	}
 }

@@ -49,9 +49,9 @@ func (s *Server) ListenAndServe(listen string) error {
 	r.GET("/logout", LogoutHandler(s.OIDCProvider, "/"))
 	r.GET("/disconnect", RequireAuthenticated, RequiredCheckedIn(s), disconnectHandler(s))
 
-	r.GET("/switch", RequireAuthenticated, switchVLANHandler(s))
-	r.POST("/switch", RequireAuthenticated, switchVLANSubmitHandler(s))
-	r.GET("/switch/success", RequireAuthenticated, switchVLANSuccessHandler(s))
+	r.GET("/switch", RequireAuthenticated, RequiredCheckedIn(s), switchVLANHandler(s))
+	r.POST("/switch", RequireAuthenticated, RequiredCheckedIn(s), switchVLANSubmitHandler(s))
+	r.GET("/switch/success", RequireAuthenticated, RequiredCheckedIn(s), switchVLANSuccessHandler(s))
 
 	r.GET("/liveness", livenessHandler(s))
 	r.GET("/readiness", readinessHandler(s))

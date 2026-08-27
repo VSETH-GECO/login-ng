@@ -2,7 +2,18 @@
 
 {{template "username" .}}
 
-{{if .connecting }}
+{{if .switching}}
+
+<div class="alert alert-success" role="alert">
+    <h4 class="alert-heading">Your VLAN has been switched!</h4>
+    <p>Please wait up to 5 minutes for the change to take effect. If it does not work after 5 minutes, unplug and plug your port back in.</p>
+</div>
+
+<form action="/">
+    <button type="submit" class="btn btn-primary btn-lg btn-block">OK</button>
+</form>
+
+{{else if .connecting }}
 
 <div class="alert alert-success" role="alert">
     <h4 class="alert-heading">You have been successfully connected to the network!</h4>
