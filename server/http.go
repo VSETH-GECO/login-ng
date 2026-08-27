@@ -45,7 +45,7 @@ func (s *Server) ListenAndServe(listen string) error {
 	r.GET("/login", LoginHandler(s.OIDCProvider))
 	r.GET("/callback", CallbackHandler(s.OIDCProvider, "/connect"))
 	r.GET("/connect", RequireAuthenticated, connectHandler(s))
-	r.GET("/logout", LogoutHandler(s.OIDCProvider))
+	r.GET("/logout", LogoutHandler(s.OIDCProvider, "/"))
 
 	r.GET("/switch", RequireAuthenticated, switchVLANHandler(s))
 	r.POST("/switch", RequireAuthenticated, switchVLANSubmitHandler(s))
