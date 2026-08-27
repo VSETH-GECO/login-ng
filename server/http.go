@@ -89,7 +89,7 @@ func readinessHandler(s *Server) gin.HandlerFunc {
 	}
 }
 
-func renderError(ctx *gin.Context, page string, code int, msg string) {
+func renderError(ctx *gin.Context, page string, code int, msg string, retryURL ...string) {
 	pageContent := gin.H{
 		"error": msg,
 	}
@@ -97,6 +97,10 @@ func renderError(ctx *gin.Context, page string, code int, msg string) {
 	session := sessions.Default(ctx)
 	if uname := session.Get(sessionUserName); uname != nil {
 		pageContent["username"] = uname
+	}
+
+	if len(retryURL) > 0 {
+		pageContent["retryURL"] = retryURL[0]
 	}
 
 	ctx.HTML(code, page, pageContent)

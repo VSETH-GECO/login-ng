@@ -14,9 +14,11 @@ const (
 
 func RequiredCheckedIn(s *Server) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
+		// derive retry URL from the current request path
+		retryURL := ctx.Request.URL.Path
 		err := s.userIsCheckedIn(ctx)
 		if err != nil {
-			renderError(ctx, "error.gohtml", http.StatusForbidden, err.Error())
+			renderError(ctx, "error.gohtml", http.StatusForbidden, err.Error(), retryURL)
 		} else {
 			ctx.Next()
 		}
@@ -27,7 +29,7 @@ func connectHandler(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		err := s.patchIntoSwitchVLAN(ctx)
 		if err != nil {
-			renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Failed to connect.")
+			renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Failed to connect.", "/connect")
 			return
 		}
 
@@ -43,7 +45,7 @@ func disconnectHandler(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		err := s.patchIntoLogonVLAN(ctx)
 		if err != nil {
-			renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Failed to disconnect.")
+			renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Failed to disconnect.", "/disconnect")
 			return
 		}
 

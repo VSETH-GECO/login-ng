@@ -4,8 +4,10 @@
 
 {{template "error" .}}
 
-<form action="/connect">
+{{if .retryURL}}
+<form action="{{.retryURL}}">
     <button type="submit" class="btn btn-primary btn-lg btn-block">Retry</button>
 </form>
+{{end}}
 
 {{template "footer"}}
