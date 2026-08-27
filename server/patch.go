@@ -8,23 +8,49 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func connectHandler(s *Server) gin.HandlerFunc {
+const (
+	logonVLAN = 499
+)
+
+func RequiredCheckedIn(s *Server) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		err := s.userIsCheckedIn(ctx)
 		if err != nil {
 			renderError(ctx, "error.gohtml", http.StatusForbidden, err.Error())
-			return
+		} else {
+			ctx.Next()
 		}
+	}
+}
 
-		err = s.patchIntoSwitchVLAN(ctx)
+func connectHandler(s *Server) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		err := s.patchIntoSwitchVLAN(ctx)
 		if err != nil {
-			renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Failed to patch into the network.")
+			renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Failed to connect.")
 			return
 		}
 
 		session := sessions.Default(ctx)
 		ctx.HTML(http.StatusOK, "success.gohtml", gin.H{
-			"username": session.Get(sessionUserName),
+			"connecting": true,
+			"username":   session.Get(sessionUserName),
+		})
+	}
+}
+
+func disconnectHandler(s *Server) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		err := s.patchIntoLogonVLAN(ctx)
+		if err != nil {
+			renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Failed to disconnect.")
+			return
+		}
+
+		session := sessions.Default(ctx)
+		ctx.HTML(http.StatusOK, "success.gohtml", gin.H{
+			"connecting": false,
+			"username":   session.Get(sessionUserName),
 		})
 	}
 }
@@ -48,6 +74,18 @@ func (s *Server) patchIntoSwitchVLAN(ctx *gin.Context) error {
 	}
 
 	return s.patch(ctx, up.userMAC, targetVLAN)
+}
+
+func (s *Server) patchIntoLogonVLAN(ctx *gin.Context) error {
+	userIP := resolveUserIP(ctx.Request)
+	up, err := s.locateUser(ctx.Request.Context(), userIP)
+	if err != nil {
+		s.Log.Error().Err(err).Str("user IP", userIP).Msg("failed to find source switch")
+		renderError(ctx, "index.gohtml", http.StatusInternalServerError, "Unable to locate the switch the user is connected to.")
+		return err
+	}
+
+	return s.patch(ctx, up.userMAC, logonVLAN)
 }
 
 func (s *Server) patch(ctx *gin.Context, userMAC string, targetVLAN int) error {
