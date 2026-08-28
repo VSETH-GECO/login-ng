@@ -119,10 +119,17 @@ func CallbackHandler(auth *OIDCProvider, postLoginRedirectURL string) gin.Handle
 			return
 		}
 
+		codeVerifier, ok := session.Get(sessionCodeVerifierKey).(string)
+		if !ok || codeVerifier == "" {
+			auth.log.Error().Msg("code verifier missing from session")
+			renderError(ctx, "index.gohtml", http.StatusBadRequest, "Invalid session state.")
+			return
+		}
+
 		token, err := auth.Exchange(
 			ctx.Request.Context(),
 			ctx.Query("code"),
-			oauth2.SetAuthURLParam("code_verifier", session.Get(sessionCodeVerifierKey).(string)),
+			oauth2.SetAuthURLParam("code_verifier", codeVerifier),
 		)
 		if err != nil {
 			auth.log.Error().Err(err).Msg("failed to exchange code")

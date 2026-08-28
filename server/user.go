@@ -25,14 +25,20 @@ type GecoAPIConfig struct {
 // see https://geco.ethz.ch/api/v1#/paths/api-v1-lan_parties-id--me/get
 func (s *Server) userIsCheckedIn(ctx *gin.Context) error {
 	session := sessions.Default(ctx)
-	sub := session.Get(sessionUserSub).(string)
+	sub, ok := session.Get(sessionUserSub).(string)
+	if !ok || sub == "" {
+		return errors.New("not authenticated")
+	}
 	log := s.Log.With().Str("sub", sub).Logger()
 
 	client := &http.Client{Transport: &http.Transport{
 		TLSClientConfig: &tls.Config{},
 	}}
 
-	accessToken := session.Get(sessionUserAccessToken).(string)
+	accessToken, ok := session.Get(sessionUserAccessToken).(string)
+	if !ok || accessToken == "" {
+		return errors.New("not authenticated")
+	}
 	userstatusURL := fmt.Sprintf(s.GecoAPIConfig.UserstatusEndpointFmt, s.GecoAPIConfig.LanID)
 	req, err := http.NewRequestWithContext(ctx.Request.Context(), http.MethodGet, userstatusURL, nil)
 	if err != nil {

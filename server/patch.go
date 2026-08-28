@@ -105,7 +105,11 @@ func (s *Server) patch(ctx *gin.Context, userMAC string, targetVLAN int) error {
 
 	// log
 	session := sessions.Default(ctx)
-	username := session.Get(sessionUserName).(string)
+	username, ok := session.Get(sessionUserName).(string)
+	if !ok || username == "" {
+		s.Log.Error().Str("user MAC", userMAC).Msg("username missing from session during login log")
+		return nil
+	}
 	err = s.createNewLoginLog(ctx.Request.Context(), username, userMAC)
 	if err != nil {
 		s.Log.Error().Err(err).
