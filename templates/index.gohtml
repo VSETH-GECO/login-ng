@@ -6,13 +6,15 @@
 
 {{template "username" .}}
 
-    <form action="/disconnect">
-        <button type="submit" class="btn btn-primary btn-lg btn-block">Disconnect</button>
-    </form>
+    <div class="d-flex flex-column align-items-center gap-3 mt-2">
+        <form action="/disconnect">
+            <button type="submit" class="btn btn-primary btn-lg">Disconnect</button>
+        </form>
 
-    <form action="/switch">
-        <button type="submit" class="btn btn-primary btn-lg btn-block">Switch VLAN</button>
-    </form>
+        <form action="/switch">
+            <button type="submit" class="btn btn-outline-secondary btn-lg">Switch VLAN</button>
+        </form>
+    </div>
 {{else}}
     <h3>Welcome to PolyLAN!</h3>
 
