@@ -5,6 +5,7 @@ import (
 	"flag"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -32,6 +33,8 @@ var (
 	gecoAPIUserstatusEndpointFmt = flag.String("geco-userstatus-endpoint", os.Getenv("GECO_USERSTATUS_ENDPOINT"), "Geco user status endpoint format (required). Geco API endpoint as specified on https://geco.ethz.ch/api/v1#/paths/api-v1-lan_parties-id--me/get.")
 
 	sessionSecret = flag.String("session-secret", os.Getenv("SESSION_SECRET"), "Session secret (required). It is recommended to use a session key with 32 or 64 bytes.")
+
+	trustedProxies = flag.String("trusted-proxies", os.Getenv("TRUSTED_PROXIES"), "Comma-separated list of trusted proxy IPs/CIDRs (required when running behind a reverse proxy).")
 
 	listenFlag = flag.String("listen", ":8080", "Where the HTTP server should listen.")
 )
@@ -119,14 +122,25 @@ func main() {
 		UserstatusEndpointFmt: *gecoAPIUserstatusEndpointFmt,
 	}
 
+	// parse trusted proxies (comma-separated)
+	var proxies []string
+	if *trustedProxies != "" {
+		for _, p := range strings.Split(*trustedProxies, ",") {
+			if trimmed := strings.TrimSpace(p); trimmed != "" {
+				proxies = append(proxies, trimmed)
+			}
+		}
+	}
+
 	// Setup server
 	sl := logger.With().Str("component", "server").Logger()
 	s := server.Server{
-		Log:           sl,
-		DB:            db,
-		OIDCProvider:  oidcProvider,
-		GecoAPIConfig: gecoAPIConfig,
-		SessionSecret: *sessionSecret,
+		Log:            sl,
+		DB:             db,
+		OIDCProvider:   oidcProvider,
+		GecoAPIConfig:  gecoAPIConfig,
+		SessionSecret:  *sessionSecret,
+		TrustedProxies: proxies,
 	}
 
 	logger.Fatal().Err(s.ListenAndServe(*listenFlag)).Msg("Failed.")

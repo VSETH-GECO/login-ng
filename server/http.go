@@ -13,16 +13,20 @@ import (
 
 // Server is the server struct
 type Server struct {
-	Log           zerolog.Logger
-	DB            db
-	OIDCProvider  *OIDCProvider
-	GecoAPIConfig *GecoAPIConfig
-	SessionSecret string
+	Log            zerolog.Logger
+	DB             db
+	OIDCProvider   *OIDCProvider
+	GecoAPIConfig  *GecoAPIConfig
+	SessionSecret  string
+	TrustedProxies []string
 }
 
 // ListenAndServe sets up the HTTP server and starts listening
 func (s *Server) ListenAndServe(listen string) error {
 	r := gin.Default()
+	if err := r.SetTrustedProxies(s.TrustedProxies); err != nil {
+		return err
+	}
 
 	// To store custom types in our cookies,
 	// we must first register them using gob.Register

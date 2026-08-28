@@ -3,7 +3,6 @@ package server
 import (
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -60,7 +59,7 @@ func disconnectHandler(s *Server) gin.HandlerFunc {
 
 func (s *Server) patchIntoSwitchVLAN(ctx *gin.Context) error {
 	// find source switch
-	userIP := resolveUserIP(ctx.Request)
+	userIP := ctx.ClientIP()
 	up, err := s.locateUser(ctx.Request.Context(), userIP)
 	if err != nil {
 		s.Log.Error().Err(err).Str("user IP", userIP).Msg("failed to find source switch")
@@ -80,7 +79,7 @@ func (s *Server) patchIntoSwitchVLAN(ctx *gin.Context) error {
 }
 
 func (s *Server) patchIntoLogonVLAN(ctx *gin.Context) error {
-	userIP := resolveUserIP(ctx.Request)
+	userIP := ctx.ClientIP()
 	up, err := s.locateUser(ctx.Request.Context(), userIP)
 	if err != nil {
 		s.Log.Error().Err(err).Str("user IP", userIP).Msg("failed to find source switch")
@@ -122,17 +121,9 @@ func (s *Server) patch(ctx *gin.Context, userMAC string, targetVLAN int) error {
 	return nil
 }
 
-func resolveUserIP(request *http.Request) string {
-	userIP := strings.Split(request.RemoteAddr, ":")[0]
-	if xff, ok := request.Header["X-Forwarded-For"]; ok {
-		userIP = xff[0]
-	}
-	return userIP
-}
-
 func switchVLANHandler(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		userIP := resolveUserIP(ctx.Request)
+		userIP := ctx.ClientIP()
 		up, err := s.locateUser(ctx.Request.Context(), userIP)
 		if err != nil {
 			s.Log.Error().Err(err).Str("user IP", userIP).Msg("failed to find source switch")
@@ -173,7 +164,7 @@ func switchVLANSubmitHandler(s *Server) gin.HandlerFunc {
 		}
 
 		// resolve user IP → switch IP + MAC
-		userIP := resolveUserIP(ctx.Request)
+		userIP := ctx.ClientIP()
 		up, err := s.locateUser(ctx.Request.Context(), userIP)
 		if err != nil {
 			s.Log.Error().Err(err).Str("user IP", userIP).Msg("failed to find source switch")
