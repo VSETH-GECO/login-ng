@@ -1,10 +1,9 @@
 package server
 
 import (
-	"crypto/tls"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/gin-contrib/sessions"
@@ -31,10 +30,6 @@ func (s *Server) userIsCheckedIn(ctx *gin.Context) error {
 	}
 	log := s.Log.With().Str("sub", sub).Logger()
 
-	client := &http.Client{Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{},
-	}}
-
 	accessToken, ok := session.Get(sessionUserAccessToken).(string)
 	if !ok || accessToken == "" {
 		return errors.New("not authenticated")
@@ -48,14 +43,14 @@ func (s *Server) userIsCheckedIn(ctx *gin.Context) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to send user status request.")
 		return err
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to read body.")
 		return err
