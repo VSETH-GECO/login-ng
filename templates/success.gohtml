@@ -9,20 +9,24 @@
     <p>Please wait up to 5 minutes for the change to take effect. If it does not work after 5 minutes, unplug and plug your port back in.</p>
 </div>
 
-<form action="/">
-    <button type="submit" class="btn btn-primary btn-lg btn-block">OK</button>
-</form>
+<div class="d-flex justify-content-center mt-2">
+    <form action="/">
+        <button type="submit" class="btn btn-primary btn-lg">OK</button>
+    </form>
+</div>
 
-{{else if .connecting }}
+{{else if .connecting}}
 
 <div class="alert alert-success" role="alert">
     <h4 class="alert-heading">You have been successfully connected to the network!</h4>
-    <p>please wait up to 5 minutes for the internet to connect. if it does not work after 5 minutes, unplug and plug your port back in.</p>
+    <p>Please wait up to 5 minutes for the internet to connect. If it does not work after 5 minutes, unplug and plug your port back in.</p>
 </div>
 
-<form action="/">
-    <button type="submit" class="btn btn-primary btn-lg btn-block">OK</button>
-</form>
+<div class="d-flex justify-content-center mt-2">
+    <form action="/">
+        <button type="submit" class="btn btn-primary btn-lg">OK</button>
+    </form>
+</div>
 
 {{else}}
 
@@ -31,9 +35,15 @@
     <p>Please wait up to 5 minutes before connecting again.</p>
 </div>
 
-<form action="/logout">
-    <button type="submit" class="btn btn-primary btn-lg btn-block">Log out</button>
-</form>
+<div class="d-flex flex-column align-items-center gap-3 mt-2">
+    <form action="/connect">
+        <button type="submit" class="btn btn-primary btn-lg">Connect again</button>
+    </form>
+    <form action="/logout">
+        <button type="submit" class="btn btn-outline-secondary btn-lg">Log out</button>
+    </form>
+</div>
+
 {{end}}
 
 {{template "footer"}}
