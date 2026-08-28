@@ -76,6 +76,7 @@ func indexHandler() gin.HandlerFunc {
 func livenessHandler(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if err := s.DB.PingContext(ctx.Request.Context()); err != nil {
+			ctx.AbortWithStatus(http.StatusServiceUnavailable)
 			return
 		}
 		ctx.Writer.Write([]byte("ok"))
