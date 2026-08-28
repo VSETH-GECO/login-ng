@@ -19,6 +19,7 @@ type Server struct {
 	GecoAPIConfig  *GecoAPIConfig
 	SessionSecret  string
 	TrustedProxies []string
+	SecureCookies  bool
 }
 
 // ListenAndServe sets up the HTTP server and starts listening
@@ -35,7 +36,7 @@ func (s *Server) ListenAndServe(listen string) error {
 	store := cookie.NewStore([]byte(s.SessionSecret))
 	store.Options(sessions.Options{
 		MaxAge:   int(4 * 24 * time.Hour.Seconds()), // 4 days for the entire LAN duration
-		Secure:   false,                             // localhost
+		Secure:   s.SecureCookies,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 	})

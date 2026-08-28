@@ -35,6 +35,7 @@ var (
 	sessionSecret = flag.String("session-secret", os.Getenv("SESSION_SECRET"), "Session secret (required). It is recommended to use a session key with 32 or 64 bytes.")
 
 	trustedProxies = flag.String("trusted-proxies", os.Getenv("TRUSTED_PROXIES"), "Comma-separated list of trusted proxy IPs/CIDRs (required when running behind a reverse proxy).")
+	secureCookies  = flag.Bool("secure-cookies", os.Getenv("SECURE_COOKIES") != "false", "Set the Secure flag on session cookies. Default true; set SECURE_COOKIES=false for plain-HTTP dev environments.")
 
 	listenFlag = flag.String("listen", ":8080", "Where the HTTP server should listen.")
 )
@@ -141,6 +142,7 @@ func main() {
 		GecoAPIConfig:  gecoAPIConfig,
 		SessionSecret:  *sessionSecret,
 		TrustedProxies: proxies,
+		SecureCookies:  *secureCookies,
 	}
 
 	logger.Fatal().Err(s.ListenAndServe(*listenFlag)).Msg("Failed.")
