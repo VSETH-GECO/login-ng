@@ -8,8 +8,8 @@ services:
     environment:
       MYSQL_DATABASE: freeradius
       MYSQL_USER: login
-      MYSQL_PASSWORD: login
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     ports:
       - "3306:3306"
   login:
@@ -20,14 +20,15 @@ services:
       - MYSQL_DB_PORT=3306
       - MYSQL_DB_NAME=freeradius
       - MYSQL_DB_USER=login
-      - MYSQL_DB_PW=login
+      - MYSQL_DB_PW=${MYSQL_PASSWORD}
       - OIDC_ISSUER=https://geco.ethz.ch
       - OIDC_REDIRECT_URL=https://login-ng.lan.geco.ethz.ch/callback
       - OIDC_CLIENT_ID=login-ng
-      - OIDC_CLIENT_SECRET=abcdef
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
       - GECO_LAN_ID=1
       - GECO_USERSTATUS_ENDPOINT=https://geco.ethz.ch/api/v1/lan_parties/%s/me
-      - SESSION_SECRET=abcdef
+      - SESSION_SECRET=${SESSION_SECRET}
+      - SECURE_COOKIES=false
       - GIN_MODE=release
     depends_on:
       - db
