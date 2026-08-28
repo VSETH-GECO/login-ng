@@ -3,14 +3,14 @@
 {{template "username" .}}
 
 <div class="alert alert-warning" role="alert">
-    <h4 class="alert-heading">Before you switch VLANs</h4>
-    <p>Shared VLANs span all switches — use them to connect directly to another participant <strong>plugged into a different switch</strong>.</p>
-    <p class="mb-0">Switching to the wrong VLAN might cut your internet access. Make sure you know what you are doing.</p>
+    <h4 class="alert-heading">Switch VLAN</h4>
+    <p>Shared VLANs span all switches — use them to play directly with participants <strong>on a different switch</strong>.</p>
+    <p class="mb-0">Choosing the wrong VLAN may cut your internet access.</p>
 </div>
 
 <form method="POST" action="/switch">
     <div class="mb-3">
-        <label for="vlan" class="form-label">Select VLAN</label>
+        <label for="vlan" class="form-label">VLAN</label>
         <select class="form-select" name="vlan" id="vlan">
             {{range .vlans}}
             <option value="{{.VLANID}}">{{.Name}} (VLAN {{.VLANID}})</option>
@@ -20,7 +20,7 @@
     <div class="form-check mb-3">
         <input class="form-check-input" type="checkbox" id="confirm" name="confirm" value="1" required>
         <label class="form-check-label" for="confirm">
-            I understand that switching VLANs may disrupt my internet connection and I know what I am doing.
+            I understand that switching VLANs may disrupt my internet connection.
         </label>
     </div>
     <div class="d-flex flex-column align-items-center gap-3 mt-2">
