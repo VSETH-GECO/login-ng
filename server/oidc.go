@@ -85,6 +85,7 @@ func LoginHandler(auth *OIDCProvider) gin.HandlerFunc {
 		if err != nil {
 			auth.log.Error().Err(err).Msg("failed to generate code verifier")
 			renderError(ctx, "index.gohtml", http.StatusInternalServerError, "Internal error")
+			return
 		}
 		hash := sha256.New()
 		io.WriteString(hash, codeVerifier)
