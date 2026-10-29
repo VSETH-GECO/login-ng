@@ -52,6 +52,14 @@ CREATE TABLE bouncer_switch_ip (
     KEY idx_switch_id (`switch_id`)
 );
 
+CREATE TABLE bouncer_vlan (
+    id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name varchar(255) NOT NULL,
+    description varchar(255) NOT NULL,
+    vlan_id INTEGER NOT NULL UNIQUE,
+    ip_range varchar(255) NOT NULL UNIQUE
+);
+
 -- 127.0.0.1 -> 127 * 2**24 + 0 * 2**16 + 0 * 2**8 + 1 * 2**0
 -- 61:62:63:64:65:66 -> abcdef
 INSERT INTO
@@ -74,7 +82,16 @@ INSERT INTO
 VALUES
     (1, "10.233.254.27");
 
+INSERT INTO
+    bouncer_vlan(name, description, vlan_id, ip_range)
+VALUES
+    ("User 27", "Primary VLAN for user 27", 527, "10.233.27.0/24"),
+    ("Shared 1", "Shared VLAN 1", 490, "10.233.90.0/24"),
+    ("Shared 2", "Shared VLAN 2", 491, "10.233.91.0/24");
+
 -- +migrate Down
+DROP TABLE bouncer_vlan;
+
 DROP TABLE lease4;
 
 DROP TABLE radacct;

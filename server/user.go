@@ -1,10 +1,9 @@
 package server
 
 import (
-	"crypto/tls"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/gin-contrib/sessions"
@@ -23,16 +22,18 @@ type GecoAPIConfig struct {
 }
 
 // see https://geco.ethz.ch/api/v1#/paths/api-v1-lan_parties-id--me/get
-func (s *Server) userIsCheckedin(ctx *gin.Context) error {
+func (s *Server) userIsCheckedIn(ctx *gin.Context) error {
 	session := sessions.Default(ctx)
-	sub := session.Get(sessionUserSub).(string)
+	sub, ok := session.Get(sessionUserSub).(string)
+	if !ok || sub == "" {
+		return errors.New("not authenticated")
+	}
 	log := s.Log.With().Str("sub", sub).Logger()
 
-	client := &http.Client{Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{},
-	}}
-
-	accessToken := session.Get(sessionUserAccessToken).(string)
+	accessToken, ok := session.Get(sessionUserAccessToken).(string)
+	if !ok || accessToken == "" {
+		return errors.New("not authenticated")
+	}
 	userstatusURL := fmt.Sprintf(s.GecoAPIConfig.UserstatusEndpointFmt, s.GecoAPIConfig.LanID)
 	req, err := http.NewRequestWithContext(ctx.Request.Context(), http.MethodGet, userstatusURL, nil)
 	if err != nil {
@@ -42,14 +43,14 @@ func (s *Server) userIsCheckedin(ctx *gin.Context) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to send user status request.")
 		return err
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to read body.")
 		return err

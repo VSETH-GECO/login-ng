@@ -85,6 +85,7 @@ func LoginHandler(auth *OIDCProvider) gin.HandlerFunc {
 		if err != nil {
 			auth.log.Error().Err(err).Msg("failed to generate code verifier")
 			renderError(ctx, "index.gohtml", http.StatusInternalServerError, "Internal error")
+			return
 		}
 		hash := sha256.New()
 		io.WriteString(hash, codeVerifier)
@@ -118,10 +119,17 @@ func CallbackHandler(auth *OIDCProvider, postLoginRedirectURL string) gin.Handle
 			return
 		}
 
+		codeVerifier, ok := session.Get(sessionCodeVerifierKey).(string)
+		if !ok || codeVerifier == "" {
+			auth.log.Error().Msg("code verifier missing from session")
+			renderError(ctx, "index.gohtml", http.StatusBadRequest, "Invalid session state.")
+			return
+		}
+
 		token, err := auth.Exchange(
 			ctx.Request.Context(),
 			ctx.Query("code"),
-			oauth2.SetAuthURLParam("code_verifier", session.Get(sessionCodeVerifierKey).(string)),
+			oauth2.SetAuthURLParam("code_verifier", codeVerifier),
 		)
 		if err != nil {
 			auth.log.Error().Err(err).Msg("failed to exchange code")
@@ -164,7 +172,7 @@ func CallbackHandler(auth *OIDCProvider, postLoginRedirectURL string) gin.Handle
 	}
 }
 
-func LogoutHandler(auth *OIDCProvider) gin.HandlerFunc {
+func LogoutHandler(auth *OIDCProvider, postLogoutRedirectURL string) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		session := sessions.Default(ctx)
 
@@ -176,11 +184,11 @@ func LogoutHandler(auth *OIDCProvider) gin.HandlerFunc {
 			return
 		}
 
-		ctx.Redirect(http.StatusTemporaryRedirect, "/")
+		ctx.Redirect(http.StatusTemporaryRedirect, postLogoutRedirectURL)
 	}
 }
 
-func IsAuthenticatedMiddleware(ctx *gin.Context) {
+func RequireAuthenticated(ctx *gin.Context) {
 	if sessions.Default(ctx).Get(sessionUserSub) == nil {
 		ctx.Redirect(http.StatusSeeOther, "/")
 	} else {

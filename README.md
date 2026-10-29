@@ -17,35 +17,66 @@ The bouncer (dedicated app) is looking for bounce jobs and bounces the port on t
 
 ## Development
 
+### 1. Start the database
+
 ```bash
 docker-compose up -d db
 go install github.com/rubenv/sql-migrate/...@latest
 sql-migrate up -config test-migrations/dbconfig.yml
+```
+
+### 2. Start the mock server
+
+`mockserver` mocks both the real OIDC provider (geco.ethz.ch) and the GeCo
+API.
+
+```bash
+go run ./mockserver          # listens on :8090
+```
+
+Endpoints provided:
+
+| Endpoint | Description |
+| --- | --- |
+| `GET /.well-known/openid-configuration` | OIDC discovery document |
+| `GET /jwks.json` | RSA public key (rotated every restart) |
+| `GET /authorize` | Redirects straight to `redirect_uri` with a code |
+| `POST /token` | Issues a signed `id_token` + `access_token` |
+| `GET /api/v1/lan_parties/{id}/me` | Returns 200 (checked-in) by default |
+
+To simulate a user **not checked in**, append `?status=422` to the
+`GECO_USERSTATUS_ENDPOINT` value (see step 3 below).
+
+### 3. Run the app
+
+```bash
 go run . \
     -mysql-server localhost \
     -mysql-port 3306 \
     -mysql-name freeradius \
     -mysql-user login \
     -mysql-pw login \
-    -oidc-issuer https://geco.ethz.ch/ \
-    -oidc-redirect-url https://localhost:8080/callback \
+    -oidc-issuer http://localhost:8090 \
+    -oidc-redirect-url http://localhost:8080/callback \
     -oidc-client-id login-ng \
     -oidc-client-secret topsecret \
     -geco-lan-id=1 \
-    -geco-userstatus-endpoint=https://geco.ethz.ch/api/v1/lan_parties/%s/me \
+    -geco-userstatus-endpoint=http://localhost:8090/api/v1/lan_parties/%s/me \
     -session-secret abcdef \
     -log-level debug \
     -log-format console
 ```
 
-Connect to the database manually
+## Debug
+
+### Connect to the database manually
 
 ```bash
 mysql -h localhost -P 3306 --database freeradius -ulogin -plogin
 $ show tables;
 ```
 
-## Debug
+### Run the app with a debugger
 
 Use the debug configuration in `.vscode/launch.json`.
 

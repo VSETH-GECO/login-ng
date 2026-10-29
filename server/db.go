@@ -23,18 +23,18 @@ type userProperties struct {
 // OpenDB creates a DB connection and performs all migrations.
 func OpenDB(ctx context.Context, mysqlUser, mysqlPassword, mysqlServer, mysqlPort, mysqlDatabase string) (db, error) {
 	mariadbURL := fmt.Sprintf("%v:%v@tcp(%v:%v)/%v?multiStatements=true&parseTime=true", mysqlUser, mysqlPassword, mysqlServer, mysqlPort, mysqlDatabase)
-	mardiadb, err := sql.Open("mysql", mariadbURL)
+	mariadb, err := sql.Open("mysql", mariadbURL)
 	if err != nil {
 		return db{}, fmt.Errorf("failed to open connection to DB: %w", err)
 	}
 
 	migrations := migrate.FileMigrationSource{Dir: "migrations"}
-	_, err = migrate.Exec(mardiadb, "mysql", migrations, migrate.Up)
+	_, err = migrate.Exec(mariadb, "mysql", migrations, migrate.Up)
 	if err != nil {
 		return db{}, fmt.Errorf("failed to apply migrations: %w", err)
 	}
 
-	return db{mardiadb}, nil
+	return db{mariadb}, nil
 }
 
 const qGetUserProperties = `
@@ -106,8 +106,41 @@ func (s *Server) getSwitchVLAN(ctx context.Context, switchIP string) (int, error
 		}
 		s.Log.Error().Err(err).
 			Str("switch IP", switchIP).
-			Msg("Failed to getch switch VLAN")
+			Msg("Failed to fetch switch VLAN")
 		return -1, fmt.Errorf("failed to get switch vlan: %w", err)
 	}
 	return vlan, nil
+}
+
+type VLANOption struct {
+	Name   string
+	VLANID int
+}
+
+const qGetAvailableVLANs = `
+SELECT name, vlan_id FROM bouncer_vlan
+WHERE vlan_id = ? OR vlan_id BETWEEN 490 AND 498
+ORDER BY vlan_id;`
+
+func (s *Server) getAvailableVLANs(ctx context.Context, primaryVLAN int) ([]VLANOption, error) {
+	rows, err := s.DB.QueryContext(ctx, qGetAvailableVLANs, primaryVLAN)
+	if err != nil {
+		s.Log.Error().Err(err).Int("primaryVLAN", primaryVLAN).Msg("Failed to query available VLANs")
+		return nil, fmt.Errorf("failed to get available VLANs: %w", err)
+	}
+	defer rows.Close()
+
+	var vlans []VLANOption
+	for rows.Next() {
+		var v VLANOption
+		if err := rows.Scan(&v.Name, &v.VLANID); err != nil {
+			s.Log.Error().Err(err).Msg("Failed to scan VLAN row")
+			return nil, fmt.Errorf("failed to scan VLAN row: %w", err)
+		}
+		vlans = append(vlans, v)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate VLAN rows: %w", err)
+	}
+	return vlans, nil
 }

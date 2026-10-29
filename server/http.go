@@ -13,16 +13,21 @@ import (
 
 // Server is the server struct
 type Server struct {
-	Log           zerolog.Logger
-	DB            db
-	OIDCProvider  *OIDCProvider
-	GecoAPIConfig *GecoAPIConfig
-	SessionSecret string
+	Log            zerolog.Logger
+	DB             db
+	OIDCProvider   *OIDCProvider
+	GecoAPIConfig  *GecoAPIConfig
+	SessionSecret  string
+	TrustedProxies []string
+	SecureCookies  bool
 }
 
 // ListenAndServe sets up the HTTP server and starts listening
 func (s *Server) ListenAndServe(listen string) error {
 	r := gin.Default()
+	if err := r.SetTrustedProxies(s.TrustedProxies); err != nil {
+		return err
+	}
 
 	// To store custom types in our cookies,
 	// we must first register them using gob.Register
@@ -31,7 +36,7 @@ func (s *Server) ListenAndServe(listen string) error {
 	store := cookie.NewStore([]byte(s.SessionSecret))
 	store.Options(sessions.Options{
 		MaxAge:   int(4 * 24 * time.Hour.Seconds()), // 4 days for the entire LAN duration
-		Secure:   false,                             // localhost
+		Secure:   s.SecureCookies,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 	})
@@ -43,13 +48,15 @@ func (s *Server) ListenAndServe(listen string) error {
 	r.GET("/", indexHandler())
 
 	r.GET("/login", LoginHandler(s.OIDCProvider))
-	r.GET("/callback", CallbackHandler(s.OIDCProvider, "/patch"))
-	r.GET("/patch", IsAuthenticatedMiddleware, patchHandler(s))
-	r.GET("/logout", LogoutHandler(s.OIDCProvider))
+	r.GET("/callback", CallbackHandler(s.OIDCProvider, "/connect"))
+	r.GET("/connect", RequireAuthenticated, RequiredCheckedIn(s), connectHandler(s))
 
-	r.GET("/switch", IsAuthenticatedMiddleware, switchVLANHandler(s))
-	r.POST("/switch", IsAuthenticatedMiddleware, switchVLANSubmitHandler(s))
-	r.GET("/switch/success", IsAuthenticatedMiddleware, switchVLANSuccessHandler(s))
+	r.GET("/logout", LogoutHandler(s.OIDCProvider, "/"))
+	r.GET("/disconnect", RequireAuthenticated, RequiredCheckedIn(s), disconnectHandler(s))
+
+	r.GET("/switch", RequireAuthenticated, RequiredCheckedIn(s), switchVLANHandler(s))
+	r.POST("/switch", RequireAuthenticated, RequiredCheckedIn(s), switchVLANSubmitHandler(s))
+	r.GET("/switch/success", RequireAuthenticated, RequiredCheckedIn(s), switchVLANSuccessHandler(s))
 
 	r.GET("/liveness", livenessHandler(s))
 	r.GET("/readiness", readinessHandler(s))
@@ -74,6 +81,7 @@ func indexHandler() gin.HandlerFunc {
 func livenessHandler(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if err := s.DB.PingContext(ctx.Request.Context()); err != nil {
+			ctx.AbortWithStatus(http.StatusServiceUnavailable)
 			return
 		}
 		ctx.Writer.Write([]byte("ok"))
@@ -87,7 +95,7 @@ func readinessHandler(s *Server) gin.HandlerFunc {
 	}
 }
 
-func renderError(ctx *gin.Context, page string, code int, msg string) {
+func renderError(ctx *gin.Context, page string, code int, msg string, retryURL ...string) {
 	pageContent := gin.H{
 		"error": msg,
 	}
@@ -95,6 +103,10 @@ func renderError(ctx *gin.Context, page string, code int, msg string) {
 	session := sessions.Default(ctx)
 	if uname := session.Get(sessionUserName); uname != nil {
 		pageContent["username"] = uname
+	}
+
+	if len(retryURL) > 0 {
+		pageContent["retryURL"] = retryURL[0]
 	}
 
 	ctx.HTML(code, page, pageContent)
