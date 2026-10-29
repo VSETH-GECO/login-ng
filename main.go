@@ -133,6 +133,10 @@ func main() {
 		}
 	}
 
+	if len(proxies) == 0 {
+		logger.Warn().Msg("No trusted proxies configured (--trusted-proxies / TRUSTED_PROXIES): X-Forwarded-For is ignored and the client IP will be the direct peer address. Set this when running behind a reverse proxy or ingress.")
+	}
+
 	// Setup server
 	sl := logger.With().Str("component", "server").Logger()
 	s := server.Server{
