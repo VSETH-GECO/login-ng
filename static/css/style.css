@@ -124,4 +124,11 @@ body {
   transform: translateY(-1px);
 }
 
-/*
+/* 7. Loading spinner — same neon red and glow as the buttons */
+.spinner-polylan {
+  width: 4rem;
+  height: 4rem;
+  color: #ff0000;
+  border-width: 0.3em;
+  filter: drop-shadow(0 0 6px rgba(255, 0, 0, 0.8));
+}

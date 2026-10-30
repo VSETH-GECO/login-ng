@@ -4,7 +4,7 @@
 
 {{/* Shown while the port is bounced. Revealed by the script below. */}}
 <div id="pending" class="d-none" data-status-url="/status">
-    <div class="spinner-border text-danger my-3" role="status" style="width: 4rem; height: 4rem;">
+    <div class="spinner-border spinner-polylan my-3" role="status">
         <span class="visually-hidden">Loading...</span>
     </div>
     <h4>{{if .switching}}Switching VLAN...{{else if .connecting}}Connecting...{{else}}Disconnecting...{{end}}</h4>
