@@ -743,3 +743,55 @@ func TestPatch_remembersTargetVLAN(t *testing.T) {
 		t.Error("expected session cookie to be updated with the target VLAN")
 	}
 }
+
+// ── success page ──────────────────────────────────────────────────────────────
+
+// TestSuccessPage_rendersAllPanels guards the template: every panel the polling
+// script toggles must be rendered (a stray template comment once swallowed them).
+func TestSuccessPage_rendersAllPanels(t *testing.T) {
+	cases := []struct {
+		path    string
+		heading string
+		expect  func(sqlmock.Sqlmock)
+	}{
+		{"/switch/success", "Switching VLAN...", func(sqlmock.Sqlmock) {}},
+		{"/connect", "Connecting...", func(mock sqlmock.Sqlmock) {
+			userAndVLANExpects(mock, "aabbcc", "10.0.0.1", 527)
+			mock.ExpectExec("INSERT INTO bouncer_jobs").WillReturnResult(sqlmock.NewResult(1, 1))
+			mock.ExpectExec("INSERT INTO login_logs").WillReturnResult(sqlmock.NewResult(1, 1))
+		}},
+		{"/disconnect", "Disconnecting...", func(mock sqlmock.Sqlmock) {
+			mock.ExpectQuery("SELECT").WillReturnRows(
+				sqlmock.NewRows([]string{"user_ip", "user_mac", "switch_ip"}).AddRow("127.0.0.1", "aabbcc", "10.0.0.1"),
+			)
+			mock.ExpectExec("INSERT INTO bouncer_jobs").WillReturnResult(sqlmock.NewResult(1, 1))
+			mock.ExpectExec("INSERT INTO login_logs").WillReturnResult(sqlmock.NewResult(1, 1))
+		}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.path, func(t *testing.T) {
+			r, mock := newFullPatchRouter(t)
+			cookies := seedCookies(t, r)
+			tc.expect(mock)
+
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest(http.MethodGet, tc.path, nil)
+			req.Header.Set("Cookie", cookies)
+			r.ServeHTTP(w, req)
+
+			body := w.Body.String()
+			for _, id := range []string{"pending", "timeout", "expired", "failed", "requested", "done"} {
+				if !strings.Contains(body, `id="`+id+`"`) {
+					t.Errorf("expected panel %q in rendered page", id)
+				}
+			}
+			if !strings.Contains(body, tc.heading) {
+				t.Errorf("expected heading %q", tc.heading)
+			}
+			if err := mock.ExpectationsWereMet(); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+}

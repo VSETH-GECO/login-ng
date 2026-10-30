@@ -2,7 +2,7 @@
 
 {{template "username" .}}
 
-{{/* Shown while the port is bounced. Revealed by the script below; without JS the <noscript> message is shown instead. */}}
+{{/* Shown while the port is bounced. Revealed by the script below. */}}
 <div id="pending" class="d-none" data-status-url="/status">
     <div class="spinner-border text-danger my-3" role="status" style="width: 4rem; height: 4rem;">
         <span class="visually-hidden">Loading...</span>
@@ -23,7 +23,32 @@
     </div>
 </div>
 
-<noscript>
+<div id="expired" class="d-none">
+    <div class="alert alert-warning" role="alert">
+        <h4 class="alert-heading">Session expired</h4>
+        <p class="mb-0">Your login session is no longer valid, so we cannot check your connection. Your change may still have been applied. Log in again to continue.</p>
+    </div>
+    <div class="d-flex justify-content-center mt-2">
+        <form action="/login">
+            <button type="submit" class="btn btn-primary btn-lg">Log in</button>
+        </form>
+    </div>
+</div>
+
+<div id="failed" class="d-none">
+    <div class="alert alert-danger" role="alert">
+        <h4 class="alert-heading">Could not check your connection</h4>
+        <p class="mb-0">The server failed to verify your network. Your change may still have been applied. If you have no internet access after a few minutes, unplug and replug your cable or contact the support.</p>
+    </div>
+    <div class="d-flex justify-content-center mt-2">
+        <form action="/">
+            <button type="submit" class="btn btn-primary btn-lg">OK</button>
+        </form>
+    </div>
+</div>
+
+{{/* Cautious message. Shown without JS, and when the arrival check cannot run or has no answer. */}}
+<div id="requested">
     <div class="alert alert-success" role="alert">
         <h4 class="alert-heading">{{if .switching}}VLAN switch requested.{{else if .connecting}}Connection requested.{{else}}Disconnect requested.{{end}}</h4>
         <p>Your connection will drop briefly and the change takes effect within a few minutes. If nothing happens after 5 minutes, unplug and replug your cable.</p>
@@ -33,7 +58,7 @@
             <button type="submit" class="btn btn-primary btn-lg">OK</button>
         </form>
     </div>
-</noscript>
+</div>
 
 {{/* Final state, revealed once the client has arrived in the new VLAN. */}}
 <div id="done" class="d-none">
@@ -84,53 +109,82 @@
 
 <script>
 (function () {
-    var pending = document.getElementById('pending');
-    var done = document.getElementById('done');
-    var timeout = document.getElementById('timeout');
-    var statusURL = pending.getAttribute('data-status-url');
+    // Without fetch/AbortController the arrival cannot be checked, so the
+    // cautious #requested message stays visible.
+    if (!window.fetch || !window.AbortController) { return; }
+
+    var panels = {
+        requested: document.getElementById('requested'),
+        pending: document.getElementById('pending'),
+        done: document.getElementById('done'),
+        timeout: document.getElementById('timeout'),
+        expired: document.getElementById('expired'),
+        failed: document.getElementById('failed')
+    };
+    var statusURL = panels.pending.getAttribute('data-status-url');
 
     var POLL_INTERVAL_MS = 2000;
     var REQUEST_TIMEOUT_MS = 4000;
     var GIVE_UP_AFTER_MS = 5 * 60 * 1000;
+    var MAX_SERVER_ERRORS = 5; // in a row, about 10 seconds
     var startedAt = Date.now();
+    var serverErrors = 0;
 
-    function show(el) {
-        pending.classList.add('d-none');
-        done.classList.add('d-none');
-        timeout.classList.add('d-none');
-        el.classList.remove('d-none');
+    function show(name) {
+        for (var key in panels) {
+            panels[key].classList.toggle('d-none', key !== name);
+        }
     }
 
     function schedule() {
         if (Date.now() - startedAt > GIVE_UP_AFTER_MS) {
-            show(timeout);
+            show('timeout');
             return;
         }
         setTimeout(poll, POLL_INTERVAL_MS);
     }
 
-    // While the port is bounced the client has no network at all, so failed or
-    // hanging requests are expected and simply mean "not there yet".
+    // Network errors and timeouts are expected while the port is bounced (the
+    // client has no network at all) and just mean "not there yet". Answers from
+    // the server are different: they are definitive or point to a real problem.
+    function handle(resp) {
+        if (resp.status === 401) { show('expired'); return; }
+        if (resp.status === 404) {
+            // no pending switch in this session, so nothing can be verified
+            show('requested');
+            return;
+        }
+        if (resp.status >= 500) {
+            // proxies may answer 502/503/504 for a moment while the network flaps
+            serverErrors++;
+            if (serverErrors >= MAX_SERVER_ERRORS) { show('failed'); } else { schedule(); }
+            return;
+        }
+        if (!resp.ok) { schedule(); return; }
+        return resp.json().then(function (body) {
+            serverErrors = 0;
+            if (body.connected) { show('done'); } else { schedule(); }
+        }, function () {
+            // not JSON, e.g. a captive portal page instead of our answer
+            schedule();
+        });
+    }
+
     function poll() {
         var controller = new AbortController();
         var abort = setTimeout(function () { controller.abort(); }, REQUEST_TIMEOUT_MS);
         fetch(statusURL, { cache: 'no-store', credentials: 'same-origin', signal: controller.signal })
             .then(function (resp) {
-                if (resp.status === 404) {
-                    // nothing to wait for (e.g. session without a pending switch)
-                    show(done);
-                    return;
-                }
-                if (!resp.ok) { throw new Error('status ' + resp.status); }
-                return resp.json().then(function (body) {
-                    if (body.connected) { show(done); } else { schedule(); }
-                });
-            })
-            .catch(schedule)
-            .finally(function () { clearTimeout(abort); });
+                clearTimeout(abort);
+                return handle(resp);
+            }, function () {
+                clearTimeout(abort);
+                serverErrors = 0;
+                schedule();
+            });
     }
 
-    show(pending);
+    show('pending');
     setTimeout(poll, POLL_INTERVAL_MS);
 })();
 </script>

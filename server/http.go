@@ -62,7 +62,7 @@ func (s *Server) ListenAndServe(listen string) error {
 	r.GET("/switch/success", RequireAuthenticated, RequiredCheckedIn(s), switchVLANSuccessHandler(s))
 
 	// polled by the success page while the user is moved to the new VLAN
-	r.GET("/status", RequireAuthenticated, statusHandler(s))
+	r.GET("/status", requireAuthenticatedJSON, statusHandler(s))
 
 	r.GET("/liveness", livenessHandler(s))
 	r.GET("/readiness", readinessHandler(s))

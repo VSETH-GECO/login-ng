@@ -196,6 +196,17 @@ func RequireAuthenticated(ctx *gin.Context) {
 	}
 }
 
+// requireAuthenticatedJSON is RequireAuthenticated for JSON endpoints: instead of
+// redirecting to the HTML home page it answers 401 so scripts can tell that the
+// session has expired.
+func requireAuthenticatedJSON(ctx *gin.Context) {
+	if sessions.Default(ctx).Get(sessionUserSub) == nil {
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
+		return
+	}
+	ctx.Next()
+}
+
 func randString(nByte int) (string, error) {
 	b := make([]byte, nByte)
 	if _, err := io.ReadFull(rand.Reader, b); err != nil {

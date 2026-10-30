@@ -198,3 +198,38 @@ func TestLogoutHandler_clearsSession(t *testing.T) {
 		t.Errorf("expected session to be cleared, got: %s", body)
 	}
 }
+
+func TestRequireAuthenticatedJSON(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(sessions.Sessions("auth-session", cookie.NewStore([]byte("test-secret"))))
+	r.GET("/seed", func(ctx *gin.Context) {
+		sess := sessions.Default(ctx)
+		sess.Set(sessionUserSub, "user123")
+		_ = sess.Save()
+	})
+	r.GET("/protected", requireAuthenticatedJSON, func(ctx *gin.Context) {
+		ctx.String(http.StatusOK, "ok")
+	})
+
+	// no session → 401 JSON, not a redirect to the HTML home page
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/protected", nil))
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", w.Code)
+	}
+	if ct := w.Header().Get("Content-Type"); !strings.Contains(ct, "application/json") {
+		t.Errorf("expected JSON response, got %q", ct)
+	}
+
+	// with session → passes through
+	w1 := httptest.NewRecorder()
+	r.ServeHTTP(w1, httptest.NewRequest(http.MethodGet, "/seed", nil))
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	req.Header.Set("Cookie", w1.Header().Get("Set-Cookie"))
+	w2 := httptest.NewRecorder()
+	r.ServeHTTP(w2, req)
+	if w2.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w2.Code)
+	}
+}
