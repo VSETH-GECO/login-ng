@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/gob"
 	"net/http"
+	"net/netip"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -19,7 +20,9 @@ type Server struct {
 	GecoAPIConfig  *GecoAPIConfig
 	SessionSecret  string
 	TrustedProxies []string
-	SecureCookies  bool
+	// LoginNetwork is the network users are in before they are connected (logon VLAN).
+	LoginNetwork  netip.Prefix
+	SecureCookies bool
 }
 
 // ListenAndServe sets up the HTTP server and starts listening
@@ -45,7 +48,7 @@ func (s *Server) ListenAndServe(listen string) error {
 	r.Static("/static", "static")
 	r.LoadHTMLGlob("templates/*.gohtml")
 
-	r.GET("/", indexHandler())
+	r.GET("/", indexHandler(s))
 
 	r.GET("/login", LoginHandler(s.OIDCProvider))
 	r.GET("/callback", CallbackHandler(s.OIDCProvider, "/connect"))
@@ -65,16 +68,24 @@ func (s *Server) ListenAndServe(listen string) error {
 	return http.ListenAndServe(listen, r)
 }
 
-func indexHandler() gin.HandlerFunc {
+func indexHandler(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		// TODO check source IP/session to either login/switch
-
 		session := sessions.Default(ctx)
 		ctx.HTML(http.StatusOK, "index.gohtml", gin.H{
 			"isAuthenticated": session.Get(sessionUserSub) != nil,
+			"inLoginNetwork":  s.inLoginNetwork(ctx.ClientIP()),
 			"username":        session.Get(sessionUserName),
 		})
 	}
+}
+
+// inLoginNetwork reports whether ip is inside the configured login network.
+func (s *Server) inLoginNetwork(ip string) bool {
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		return false
+	}
+	return s.LoginNetwork.Contains(addr.Unmap())
 }
 
 // executed every few seconds in order to check the container status.

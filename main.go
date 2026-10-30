@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"io"
+	"net/netip"
 	"os"
 	"strings"
 	"time"
@@ -35,6 +36,7 @@ var (
 	sessionSecret = flag.String("session-secret", os.Getenv("SESSION_SECRET"), "Session secret (required). It is recommended to use a session key with 32 or 64 bytes.")
 
 	trustedProxies = flag.String("trusted-proxies", os.Getenv("TRUSTED_PROXIES"), "Comma-separated list of trusted proxy IPs/CIDRs (required when running behind a reverse proxy).")
+	loginNetwork   = flag.String("login-network", os.Getenv("LOGIN_NETWORK"), "CIDR of the login network (VLAN 499), e.g. 10.233.64.0/20. Clients in this network are shown 'Connect', all others 'Disconnect'.")
 	secureCookies  = flag.Bool("secure-cookies", os.Getenv("SECURE_COOKIES") != "false", "Set the Secure flag on session cookies. Default true; set SECURE_COOKIES=false for plain-HTTP dev environments.")
 
 	listenFlag = flag.String("listen", ":8080", "Where the HTTP server should listen.")
@@ -133,6 +135,17 @@ func main() {
 		}
 	}
 
+	var loginPrefix netip.Prefix
+	if *loginNetwork != "" {
+		var err error
+		loginPrefix, err = netip.ParsePrefix(*loginNetwork)
+		if err != nil {
+			logger.Fatal().Err(err).Str("login-network", *loginNetwork).Msg("Invalid login network CIDR.")
+		}
+	} else {
+		logger.Warn().Msg("No login network configured (--login-network / LOGIN_NETWORK): the UI cannot tell whether a user is already connected.")
+	}
+
 	if len(proxies) == 0 {
 		logger.Warn().Msg("No trusted proxies configured (--trusted-proxies / TRUSTED_PROXIES): X-Forwarded-For is ignored and the client IP will be the direct peer address. Set this when running behind a reverse proxy or ingress.")
 	}
@@ -146,6 +159,7 @@ func main() {
 		GecoAPIConfig:  gecoAPIConfig,
 		SessionSecret:  *sessionSecret,
 		TrustedProxies: proxies,
+		LoginNetwork:   loginPrefix,
 		SecureCookies:  *secureCookies,
 	}
 

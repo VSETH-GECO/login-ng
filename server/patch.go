@@ -27,9 +27,8 @@ func RequiredCheckedIn(s *Server) func(ctx *gin.Context) {
 
 func connectHandler(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		err := s.patchIntoSwitchVLAN(ctx)
-		if err != nil {
-			renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Failed to connect.", "/connect")
+		// patchIntoSwitchVLAN has already rendered the error page on failure
+		if err := s.patchIntoSwitchVLAN(ctx); err != nil {
 			return
 		}
 
@@ -43,9 +42,8 @@ func connectHandler(s *Server) gin.HandlerFunc {
 
 func disconnectHandler(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		err := s.patchIntoLogonVLAN(ctx)
-		if err != nil {
-			renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Failed to disconnect.", "/disconnect")
+		// patchIntoLogonVLAN has already rendered the error page on failure
+		if err := s.patchIntoLogonVLAN(ctx); err != nil {
 			return
 		}
 
@@ -63,7 +61,7 @@ func (s *Server) patchIntoSwitchVLAN(ctx *gin.Context) error {
 	up, err := s.locateUser(ctx.Request.Context(), userIP)
 	if err != nil {
 		s.Log.Error().Err(err).Str("user IP", userIP).Msg("failed to find source switch")
-		renderError(ctx, "index.gohtml", http.StatusInternalServerError, "Unable to locate the switch the user is connected to.")
+		renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Unable to locate the switch the user is connected to.", ctx.Request.URL.Path)
 		return err
 	}
 
@@ -71,7 +69,7 @@ func (s *Server) patchIntoSwitchVLAN(ctx *gin.Context) error {
 	targetVLAN, err := s.getSwitchVLAN(ctx.Request.Context(), up.switchIP)
 	if err != nil {
 		s.Log.Error().Err(err).Str("switch IP", up.switchIP).Msg("VLAN for switch not found")
-		renderError(ctx, "index.gohtml", http.StatusInternalServerError, "Unkown switch IP")
+		renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Unknown switch IP.", ctx.Request.URL.Path)
 		return err
 	}
 
@@ -83,7 +81,7 @@ func (s *Server) patchIntoLogonVLAN(ctx *gin.Context) error {
 	up, err := s.locateUser(ctx.Request.Context(), userIP)
 	if err != nil {
 		s.Log.Error().Err(err).Str("user IP", userIP).Msg("failed to find source switch")
-		renderError(ctx, "index.gohtml", http.StatusInternalServerError, "Unable to locate the switch the user is connected to.")
+		renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Unable to locate the switch the user is connected to.", ctx.Request.URL.Path)
 		return err
 	}
 
@@ -98,7 +96,7 @@ func (s *Server) patch(ctx *gin.Context, userMAC string, targetVLAN int) error {
 			Str("user MAC", userMAC).
 			Int("target VLAN", targetVLAN).
 			Msg("failed to create a new bounce job")
-		renderError(ctx, "index.gohtml", http.StatusInternalServerError, "Internal Server Error: Please contact the support.")
+		renderError(ctx, "error.gohtml", http.StatusInternalServerError, "Internal Server Error: Please contact the support.", ctx.Request.URL.Path)
 		return err
 	}
 
