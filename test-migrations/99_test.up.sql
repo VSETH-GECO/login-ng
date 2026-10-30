@@ -86,8 +86,8 @@ INSERT INTO
     bouncer_vlan(name, description, vlan_id, ip_range)
 VALUES
     ("User 27", "Primary VLAN for user 27", 527, "10.233.27.0/24"),
-    ("Shared 1", "Shared VLAN 1", 490, "10.233.90.0/24"),
-    ("Shared 2", "Shared VLAN 2", 491, "10.233.91.0/24");
+    ("Shared 1", "Shared VLAN 1", 490, "10.233.40.0/24"),
+    ("Shared 2", "Shared VLAN 2", 491, "10.233.41.0/24");
 
 -- +migrate Down
 DROP TABLE bouncer_vlan;
