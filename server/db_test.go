@@ -274,3 +274,54 @@ func TestGetAvailableVLANs_rowsErr(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+// ── getVLANPrefix ─────────────────────────────────────────────────────────────
+
+func TestGetVLANPrefix_found(t *testing.T) {
+	s, mock := newTestServer(t)
+
+	mock.ExpectQuery("SELECT ip_range").WithArgs(507).
+		WillReturnRows(sqlmock.NewRows([]string{"ip_range"}).AddRow("10.233.7.0/24"))
+
+	prefix, err := s.getVLANPrefix(context.Background(), 507)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if prefix.String() != "10.233.7.0/24" {
+		t.Errorf("expected 10.233.7.0/24, got %s", prefix)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestGetVLANPrefix_notFound(t *testing.T) {
+	s, mock := newTestServer(t)
+
+	mock.ExpectQuery("SELECT ip_range").WithArgs(507).WillReturnError(sql.ErrNoRows)
+
+	if _, err := s.getVLANPrefix(context.Background(), 507); err == nil || err.Error() != "vlan not found" {
+		t.Errorf("expected 'vlan not found', got %v", err)
+	}
+}
+
+func TestGetVLANPrefix_invalidRange(t *testing.T) {
+	s, mock := newTestServer(t)
+
+	mock.ExpectQuery("SELECT ip_range").WithArgs(507).
+		WillReturnRows(sqlmock.NewRows([]string{"ip_range"}).AddRow("not-a-cidr"))
+
+	if _, err := s.getVLANPrefix(context.Background(), 507); err == nil {
+		t.Error("expected error for invalid ip range")
+	}
+}
+
+func TestGetVLANPrefix_dbError(t *testing.T) {
+	s, mock := newTestServer(t)
+
+	mock.ExpectQuery("SELECT ip_range").WithArgs(507).WillReturnError(errors.New("boom"))
+
+	if _, err := s.getVLANPrefix(context.Background(), 507); err == nil {
+		t.Error("expected error")
+	}
+}

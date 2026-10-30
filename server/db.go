@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/netip"
 
 	_ "github.com/go-sql-driver/mysql"
 	migrate "github.com/rubenv/sql-migrate"
@@ -110,6 +111,26 @@ func (s *Server) getSwitchVLAN(ctx context.Context, switchIP string) (int, error
 		return -1, fmt.Errorf("failed to get switch vlan: %w", err)
 	}
 	return vlan, nil
+}
+
+const qGetVLANIPRange = `SELECT ip_range FROM bouncer_vlan WHERE vlan_id=?;`
+
+// getVLANPrefix returns the IP range (CIDR) clients in the given VLAN get their address from.
+func (s *Server) getVLANPrefix(ctx context.Context, vlanID int) (netip.Prefix, error) {
+	var ipRange string
+	err := s.DB.QueryRowContext(ctx, qGetVLANIPRange, vlanID).Scan(&ipRange)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return netip.Prefix{}, errors.New("vlan not found")
+		}
+		s.Log.Error().Err(err).Int("vlan", vlanID).Msg("Failed to fetch VLAN IP range")
+		return netip.Prefix{}, fmt.Errorf("failed to get vlan ip range: %w", err)
+	}
+	prefix, err := netip.ParsePrefix(ipRange)
+	if err != nil {
+		return netip.Prefix{}, fmt.Errorf("invalid ip range %q for vlan %d: %w", ipRange, vlanID, err)
+	}
+	return prefix, nil
 }
 
 type VLANOption struct {

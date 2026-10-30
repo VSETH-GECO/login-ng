@@ -4,7 +4,9 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -605,4 +607,139 @@ func seedCookiesFromRoute(t *testing.T, r *gin.Engine, path string) string {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
 	return w.Header().Get("Set-Cookie")
+}
+
+// ── statusHandler ─────────────────────────────────────────────────────────────
+
+// newStatusRouter mounts /status plus a /seed route that stores the target VLAN
+// in the session the same way patch() does.
+func newStatusRouter(t *testing.T) (*gin.Engine, sqlmock.Sqlmock) {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+
+	sqlDB, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("sqlmock.New: %v", err)
+	}
+	t.Cleanup(func() { sqlDB.Close() })
+
+	s := &Server{
+		Log:          zerolog.Nop(),
+		DB:           db{sqlDB},
+		LoginNetwork: netip.MustParsePrefix("10.233.64.0/20"),
+	}
+
+	r := gin.New()
+	r.Use(sessions.Sessions("auth-session", cookie.NewStore([]byte("test-secret"))))
+	r.GET("/seed/:vlan", func(ctx *gin.Context) {
+		vlan, _ := strconv.Atoi(ctx.Param("vlan"))
+		sess := sessions.Default(ctx)
+		sess.Set(sessionTargetVLAN, vlan)
+		_ = sess.Save()
+	})
+	r.GET("/status", statusHandler(s))
+
+	return r, mock
+}
+
+func getStatus(t *testing.T, r *gin.Engine, seedVLAN, remoteAddr string) *httptest.ResponseRecorder {
+	t.Helper()
+	var cookieHeader string
+	if seedVLAN != "" {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/seed/"+seedVLAN, nil))
+		cookieHeader = w.Header().Get("Set-Cookie")
+	}
+	req := httptest.NewRequest(http.MethodGet, "/status", nil)
+	req.RemoteAddr = remoteAddr
+	if cookieHeader != "" {
+		req.Header.Set("Cookie", cookieHeader)
+	}
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	return w
+}
+
+func TestStatusHandler_noPendingSwitch(t *testing.T) {
+	r, _ := newStatusRouter(t)
+
+	w := getStatus(t, r, "", "10.233.7.10:1234")
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestStatusHandler_arrivedInUserVLAN(t *testing.T) {
+	r, mock := newStatusRouter(t)
+	mock.ExpectQuery("SELECT ip_range").WithArgs(507).
+		WillReturnRows(sqlmock.NewRows([]string{"ip_range"}).AddRow("10.233.7.0/24"))
+
+	w := getStatus(t, r, "507", "10.233.7.10:1234")
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"connected":true`) {
+		t.Errorf("expected connected, got %d: %s", w.Code, w.Body.String())
+	}
+	if got := w.Header().Get("Cache-Control"); got != "no-store" {
+		t.Errorf("expected Cache-Control no-store, got %q", got)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestStatusHandler_stillInLoginNetwork(t *testing.T) {
+	r, mock := newStatusRouter(t)
+	mock.ExpectQuery("SELECT ip_range").WithArgs(507).
+		WillReturnRows(sqlmock.NewRows([]string{"ip_range"}).AddRow("10.233.7.0/24"))
+
+	w := getStatus(t, r, "507", "10.233.64.10:1234")
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"connected":false`) {
+		t.Errorf("expected not connected, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestStatusHandler_disconnectUsesLoginNetwork(t *testing.T) {
+	r, mock := newStatusRouter(t)
+
+	// logon VLAN is resolved from the configured network, no DB lookup
+	w := getStatus(t, r, "499", "10.233.64.10:1234")
+	if !strings.Contains(w.Body.String(), `"connected":true`) {
+		t.Errorf("expected connected, got: %s", w.Body.String())
+	}
+	w = getStatus(t, r, "499", "10.233.7.10:1234")
+	if !strings.Contains(w.Body.String(), `"connected":false`) {
+		t.Errorf("expected not connected, got: %s", w.Body.String())
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestStatusHandler_unknownVLAN(t *testing.T) {
+	r, mock := newStatusRouter(t)
+	mock.ExpectQuery("SELECT ip_range").WithArgs(507).WillReturnError(errors.New("boom"))
+
+	w := getStatus(t, r, "507", "10.233.7.10:1234")
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500, got %d", w.Code)
+	}
+}
+
+func TestPatch_remembersTargetVLAN(t *testing.T) {
+	r, mock := newFullPatchRouter(t)
+	cookies := seedCookies(t, r)
+
+	userAndVLANExpects(mock, "aabbcc", "10.0.0.1", 527)
+	mock.ExpectExec("INSERT INTO bouncer_jobs").WithArgs("aabbcc", 527).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO login_logs").WithArgs("alice", "aabbcc").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/connect", nil)
+	req.Header.Set("Cookie", cookies)
+	r.ServeHTTP(w, req)
+
+	if w.Header().Get("Set-Cookie") == "" {
+		t.Error("expected session cookie to be updated with the target VLAN")
+	}
 }

@@ -61,6 +61,9 @@ func (s *Server) ListenAndServe(listen string) error {
 	r.POST("/switch", RequireAuthenticated, RequiredCheckedIn(s), switchVLANSubmitHandler(s))
 	r.GET("/switch/success", RequireAuthenticated, RequiredCheckedIn(s), switchVLANSuccessHandler(s))
 
+	// polled by the success page while the user is moved to the new VLAN
+	r.GET("/status", RequireAuthenticated, statusHandler(s))
+
 	r.GET("/liveness", livenessHandler(s))
 	r.GET("/readiness", readinessHandler(s))
 
@@ -81,11 +84,16 @@ func indexHandler(s *Server) gin.HandlerFunc {
 
 // inLoginNetwork reports whether ip is inside the configured login network.
 func (s *Server) inLoginNetwork(ip string) bool {
+	return prefixContains(s.LoginNetwork, ip)
+}
+
+// prefixContains reports whether ip is inside prefix.
+func prefixContains(prefix netip.Prefix, ip string) bool {
 	addr, err := netip.ParseAddr(ip)
 	if err != nil {
 		return false
 	}
-	return s.LoginNetwork.Contains(addr.Unmap())
+	return prefix.Contains(addr.Unmap())
 }
 
 // executed every few seconds in order to check the container status.

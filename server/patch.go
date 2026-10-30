@@ -1,7 +1,9 @@
 package server
 
 import (
+	"context"
 	"net/http"
+	"net/netip"
 	"strconv"
 
 	"github.com/gin-contrib/sessions"
@@ -10,6 +12,8 @@ import (
 
 const (
 	logonVLAN = 499
+
+	sessionTargetVLAN = "target_vlan"
 )
 
 func RequiredCheckedIn(s *Server) func(ctx *gin.Context) {
@@ -100,8 +104,14 @@ func (s *Server) patch(ctx *gin.Context, userMAC string, targetVLAN int) error {
 		return err
 	}
 
-	// log
+	// remember the target so /status can tell when the user has arrived
 	session := sessions.Default(ctx)
+	session.Set(sessionTargetVLAN, targetVLAN)
+	if err := session.Save(); err != nil {
+		s.Log.Error().Err(err).Int("target VLAN", targetVLAN).Msg("failed to save target VLAN in session")
+	}
+
+	// log
 	username, ok := session.Get(sessionUserName).(string)
 	if !ok || username == "" {
 		s.Log.Error().Str("user MAC", userMAC).Msg("username missing from session during login log")
@@ -214,4 +224,37 @@ func switchVLANSuccessHandler(s *Server) gin.HandlerFunc {
 			"username":  session.Get(sessionUserName),
 		})
 	}
+}
+
+// statusHandler reports whether the client has arrived in the VLAN of its last
+// bounce job, i.e. whether its current IP lies within that VLAN's IP range.
+// It is polled by the success page while the port is being bounced.
+func statusHandler(s *Server) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctx.Header("Cache-Control", "no-store")
+
+		targetVLAN, ok := sessions.Default(ctx).Get(sessionTargetVLAN).(int)
+		if !ok {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": "no pending VLAN switch"})
+			return
+		}
+
+		prefix, err := s.vlanPrefix(ctx.Request.Context(), targetVLAN)
+		if err != nil {
+			s.Log.Error().Err(err).Int("target VLAN", targetVLAN).Msg("failed to resolve IP range of target VLAN")
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unknown target VLAN"})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{"connected": prefixContains(prefix, ctx.ClientIP())})
+	}
+}
+
+// vlanPrefix returns the IP range of the given VLAN. The logon VLAN uses the
+// configured login network if set, all others are looked up in the database.
+func (s *Server) vlanPrefix(ctx context.Context, vlanID int) (netip.Prefix, error) {
+	if vlanID == logonVLAN && s.LoginNetwork.IsValid() {
+		return s.LoginNetwork, nil
+	}
+	return s.getVLANPrefix(ctx, vlanID)
 }
