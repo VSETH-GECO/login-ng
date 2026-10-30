@@ -2,7 +2,7 @@
 
 {{template "username" .}}
 
-{{/* Shown while the port is bounced. Revealed by the script below, so without JS the final message is shown right away. */}}
+{{/* Shown while the port is bounced. Revealed by the script below; without JS the <noscript> message is shown instead. */}}
 <div id="pending" class="d-none" data-status-url="/status">
     <div class="spinner-border text-danger my-3" role="status" style="width: 4rem; height: 4rem;">
         <span class="visually-hidden">Loading...</span>
@@ -14,7 +14,7 @@
 <div id="timeout" class="d-none">
     <div class="alert alert-warning" role="alert">
         <h4 class="alert-heading">Taking longer than expected</h4>
-        <p class="mb-0">You are not in the new network yet. Unplug and replug your cable. If that does not help, contact the support.</p>
+        <p class="mb-0">We could not confirm that you are in the new network yet. Unplug and replug your cable. If that does not help, contact the support.</p>
     </div>
     <div class="d-flex justify-content-center mt-2">
         <form action="/">
@@ -23,12 +23,25 @@
     </div>
 </div>
 
-<div id="done">
+<noscript>
+    <div class="alert alert-success" role="alert">
+        <h4 class="alert-heading">{{if .switching}}VLAN switch requested.{{else if .connecting}}Connection requested.{{else}}Disconnect requested.{{end}}</h4>
+        <p>Your connection will drop briefly and the change takes effect within a few minutes. If nothing happens after 5 minutes, unplug and replug your cable.</p>
+    </div>
+    <div class="d-flex justify-content-center mt-2">
+        <form action="/">
+            <button type="submit" class="btn btn-primary btn-lg">OK</button>
+        </form>
+    </div>
+</noscript>
+
+{{/* Final state, revealed once the client has arrived in the new VLAN. */}}
+<div id="done" class="d-none">
 {{if .switching}}
 
 <div class="alert alert-success" role="alert">
     <h4 class="alert-heading">VLAN switched!</h4>
-    <p>The change takes effect within a few minutes. If nothing happens after 5 minutes, unplug and replug your cable.</p>
+    <p>You are now connected to the new VLAN.</p>
 </div>
 
 <div class="d-flex justify-content-center mt-2">
@@ -41,7 +54,7 @@
 
 <div class="alert alert-success" role="alert">
     <h4 class="alert-heading">Connected!</h4>
-    <p>You should have internet access within a few minutes. If nothing happens after 5 minutes, unplug and replug your cable.</p>
+    <p>You are now on the network and should have internet access.</p>
 </div>
 
 <div class="d-flex justify-content-center mt-2">
@@ -54,7 +67,7 @@
 
 <div class="alert alert-success" role="alert">
     <h4 class="alert-heading">Disconnected.</h4>
-    <p>You have been moved back to the logon VLAN.</p>
+    <p>You are back in the logon network. Connect again to get internet access.</p>
 </div>
 
 <div class="d-flex flex-column align-items-center gap-3 mt-2">
