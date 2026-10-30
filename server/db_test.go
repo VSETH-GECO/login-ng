@@ -194,8 +194,12 @@ func TestGetAvailableVLANs_success(t *testing.T) {
 	if len(vlans) != 3 {
 		t.Fatalf("expected 3 VLANs, got %d", len(vlans))
 	}
-	if vlans[2].VLANID != 527 || vlans[2].Name != "User 27" {
-		t.Errorf("unexpected last VLAN: %+v", vlans[2])
+	// the user's own VLAN comes first, shared VLANs follow in VLAN order
+	if vlans[0].VLANID != 527 || vlans[0].Name != "User 27" {
+		t.Errorf("unexpected first VLAN: %+v", vlans[0])
+	}
+	if vlans[1].VLANID != 490 || vlans[2].VLANID != 491 {
+		t.Errorf("expected shared VLANs 490, 491 after the primary, got %+v", vlans[1:])
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Error(err)

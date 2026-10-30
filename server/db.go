@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/netip"
+	"sort"
 
 	_ "github.com/go-sql-driver/mysql"
 	migrate "github.com/rubenv/sql-migrate"
@@ -163,5 +164,11 @@ func (s *Server) getAvailableVLANs(ctx context.Context, primaryVLAN int) ([]VLAN
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("failed to iterate VLAN rows: %w", err)
 	}
+
+	// list the user's own (primary) VLAN first, the shared ones follow in VLAN order
+	sort.SliceStable(vlans, func(i, j int) bool {
+		iPrimary, jPrimary := vlans[i].VLANID == primaryVLAN, vlans[j].VLANID == primaryVLAN
+		return iPrimary && !jPrimary
+	})
 	return vlans, nil
 }
