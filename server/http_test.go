@@ -151,6 +151,7 @@ func authenticatedIndexBody(t *testing.T, remoteAddr string) string {
 	seedRouter.GET("/seed", func(ctx *gin.Context) {
 		sess := sessions.Default(ctx)
 		sess.Set(sessionUserSub, "user123")
+		sess.Set(sessionUserTokenExpiry, validTokenExpiry())
 		_ = sess.Save()
 	})
 	w1 := httptest.NewRecorder()
@@ -188,6 +189,7 @@ func TestIndexHandler_authenticated(t *testing.T) {
 	seedRouter.GET("/seed", func(ctx *gin.Context) {
 		sess := sessions.Default(ctx)
 		sess.Set(sessionUserSub, "user123")
+		sess.Set(sessionUserTokenExpiry, validTokenExpiry())
 		sess.Set(sessionUserName, "alice")
 		_ = sess.Save()
 		ctx.String(http.StatusOK, "seeded")

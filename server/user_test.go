@@ -39,6 +39,7 @@ func newGecoTestRouter(t *testing.T, sub, token string, gecoHandler http.Handler
 	r.GET("/test", func(ctx *gin.Context) {
 		sess := sessions.Default(ctx)
 		sess.Set(sessionUserSub, sub)
+		sess.Set(sessionUserTokenExpiry, validTokenExpiry())
 		sess.Set(sessionUserAccessToken, token)
 		_ = sess.Save()
 		err := s.userIsCheckedIn(ctx)
@@ -142,6 +143,7 @@ func TestUserIsCheckedIn_missingToken(t *testing.T) {
 		sess := sessions.Default(ctx)
 		// sub is set but access token is not
 		sess.Set(sessionUserSub, "user123")
+		sess.Set(sessionUserTokenExpiry, validTokenExpiry())
 		_ = sess.Save()
 		err := s.userIsCheckedIn(ctx)
 		if err != nil {

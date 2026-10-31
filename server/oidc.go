@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-contrib/sessions"
@@ -159,7 +160,15 @@ func CallbackHandler(auth *OIDCProvider, postLoginRedirectURL string) gin.Handle
 			return
 		}
 
+		// The provider issues no refresh tokens, so the session has to end when the access token does.
+		if token.Expiry.IsZero() {
+			auth.log.Error().Msg("token response has no expiry")
+			renderError(ctx, "index.gohtml", http.StatusInternalServerError, "Failed to get token expiry.")
+			return
+		}
+
 		session.Set(sessionUserAccessToken, token.AccessToken)
+		session.Set(sessionUserTokenExpiry, token.Expiry.Unix())
 		session.Set(sessionUserSub, idToken.Subject)
 		session.Set(sessionUserName, claims.Username)
 		if err := session.Save(); err != nil {
@@ -188,8 +197,20 @@ func LogoutHandler(auth *OIDCProvider, postLogoutRedirectURL string) gin.Handler
 	}
 }
 
+// hasValidSession reports whether the session has a logged-in user whose access
+// token has not expired. The provider issues no refresh tokens, so an expired
+// token means the user has to log in again.
+func hasValidSession(session sessions.Session) bool {
+	sub, ok := session.Get(sessionUserSub).(string)
+	if !ok || sub == "" {
+		return false
+	}
+	expiry, ok := session.Get(sessionUserTokenExpiry).(int64)
+	return ok && time.Now().Before(time.Unix(expiry, 0))
+}
+
 func RequireAuthenticated(ctx *gin.Context) {
-	if sessions.Default(ctx).Get(sessionUserSub) == nil {
+	if !hasValidSession(sessions.Default(ctx)) {
 		ctx.Redirect(http.StatusSeeOther, "/")
 	} else {
 		ctx.Next()
@@ -200,7 +221,7 @@ func RequireAuthenticated(ctx *gin.Context) {
 // redirecting to the HTML home page it answers 401 so scripts can tell that the
 // session has expired.
 func requireAuthenticatedJSON(ctx *gin.Context) {
-	if sessions.Default(ctx).Get(sessionUserSub) == nil {
+	if !hasValidSession(sessions.Default(ctx)) {
 		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}

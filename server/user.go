@@ -14,6 +14,7 @@ const (
 	sessionUserSub         = "sub"
 	sessionUserName        = "username"
 	sessionUserAccessToken = "access_token"
+	sessionUserTokenExpiry = "access_token_expiry"
 )
 
 type GecoAPIConfig struct {
@@ -24,10 +25,10 @@ type GecoAPIConfig struct {
 // see https://geco.ethz.ch/api/v1#/paths/api-v1-lan_parties-id--me/get
 func (s *Server) userIsCheckedIn(ctx *gin.Context) error {
 	session := sessions.Default(ctx)
-	sub, ok := session.Get(sessionUserSub).(string)
-	if !ok || sub == "" {
+	if !hasValidSession(session) {
 		return errors.New("not authenticated")
 	}
+	sub, _ := session.Get(sessionUserSub).(string)
 	log := s.Log.With().Str("sub", sub).Logger()
 
 	accessToken, ok := session.Get(sessionUserAccessToken).(string)

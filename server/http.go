@@ -75,7 +75,7 @@ func indexHandler(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		session := sessions.Default(ctx)
 		ctx.HTML(http.StatusOK, "index.gohtml", gin.H{
-			"isAuthenticated": session.Get(sessionUserSub) != nil,
+			"isAuthenticated": hasValidSession(session),
 			"inLoginNetwork":  s.inLoginNetwork(ctx.ClientIP()),
 			"username":        session.Get(sessionUserName),
 		})

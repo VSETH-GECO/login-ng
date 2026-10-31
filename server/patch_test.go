@@ -559,6 +559,7 @@ func newCheckedInRouter(t *testing.T, gecoHandler http.HandlerFunc) *gin.Engine 
 	r.GET("/seed", func(ctx *gin.Context) {
 		sess := sessions.Default(ctx)
 		sess.Set(sessionUserSub, "user123")
+		sess.Set(sessionUserTokenExpiry, validTokenExpiry())
 		sess.Set(sessionUserAccessToken, "tok")
 		_ = sess.Save()
 		ctx.String(http.StatusOK, "ok")

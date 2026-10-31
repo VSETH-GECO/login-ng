@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -46,6 +47,7 @@ func newAuthRouter() *gin.Engine {
 	r.GET("/seed", func(ctx *gin.Context) {
 		sess := sessions.Default(ctx)
 		sess.Set(sessionUserSub, "user123")
+		sess.Set(sessionUserTokenExpiry, validTokenExpiry())
 		_ = sess.Save()
 		ctx.String(http.StatusOK, "seeded")
 	})
@@ -78,6 +80,52 @@ func TestRequireAuthenticated_withSession(t *testing.T) {
 
 	if w2.Code != http.StatusOK {
 		t.Errorf("expected 200, got %d", w2.Code)
+	}
+}
+
+// validTokenExpiry is an access token expiry far enough in the future for test sessions.
+func validTokenExpiry() int64 {
+	return time.Now().Add(time.Hour).Unix()
+}
+
+func TestRequireAuthenticated_tokenExpiry(t *testing.T) {
+	tests := []struct {
+		name   string
+		expiry any // nil leaves the expiry unset
+		want   int
+	}{
+		{"valid", validTokenExpiry(), http.StatusOK},
+		{"expired", time.Now().Add(-time.Minute).Unix(), http.StatusSeeOther},
+		{"missing", nil, http.StatusSeeOther},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gin.SetMode(gin.TestMode)
+			r := gin.New()
+			r.Use(sessions.Sessions("auth-session", cookie.NewStore([]byte("test-secret"))))
+			r.GET("/seed", func(ctx *gin.Context) {
+				sess := sessions.Default(ctx)
+				sess.Set(sessionUserSub, "user123")
+				if tt.expiry != nil {
+					sess.Set(sessionUserTokenExpiry, tt.expiry)
+				}
+				_ = sess.Save()
+			})
+			r.GET("/protected", RequireAuthenticated, func(ctx *gin.Context) {
+				ctx.String(http.StatusOK, "ok")
+			})
+
+			w1 := httptest.NewRecorder()
+			r.ServeHTTP(w1, httptest.NewRequest(http.MethodGet, "/seed", nil))
+			req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+			req.Header.Set("Cookie", w1.Header().Get("Set-Cookie"))
+			w2 := httptest.NewRecorder()
+			r.ServeHTTP(w2, req)
+
+			if w2.Code != tt.want {
+				t.Errorf("expected %d, got %d", tt.want, w2.Code)
+			}
+		})
 	}
 }
 
@@ -157,6 +205,7 @@ func TestLogoutHandler_clearsSession(t *testing.T) {
 	r.GET("/seed", func(ctx *gin.Context) {
 		sess := sessions.Default(ctx)
 		sess.Set(sessionUserSub, "user123")
+		sess.Set(sessionUserTokenExpiry, validTokenExpiry())
 		_ = sess.Save()
 		ctx.String(http.StatusOK, "ok")
 	})
@@ -206,6 +255,7 @@ func TestRequireAuthenticatedJSON(t *testing.T) {
 	r.GET("/seed", func(ctx *gin.Context) {
 		sess := sessions.Default(ctx)
 		sess.Set(sessionUserSub, "user123")
+		sess.Set(sessionUserTokenExpiry, validTokenExpiry())
 		_ = sess.Save()
 	})
 	r.GET("/protected", requireAuthenticatedJSON, func(ctx *gin.Context) {
