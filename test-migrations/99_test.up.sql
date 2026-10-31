@@ -85,7 +85,8 @@ VALUES
 INSERT INTO
     bouncer_vlan(name, description, vlan_id, ip_range)
 VALUES
-    ("User 27", "Primary VLAN for user 27", 527, "10.233.27.0/24"),
+    -- The range covers 127.0.0.1 (the only lease above) so that /status can see the local client arrive.
+    ("User 27", "Primary VLAN for user 27", 527, "127.0.0.0/8"),
     ("Shared 1", "Shared VLAN 1", 490, "10.233.40.0/24"),
     ("Shared 2", "Shared VLAN 2", 491, "10.233.41.0/24");
 

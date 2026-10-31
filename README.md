@@ -62,9 +62,28 @@ go run . \
     -oidc-client-secret topsecret \
     -geco-lan-id=1 \
     -geco-userstatus-endpoint=http://localhost:8090/api/v1/lan_parties/%s/me \
+    -login-network 127.0.0.0/8 \
     -session-secret abcdef \
     -log-level debug \
     -log-format console
+```
+
+The test data has a single lease for `127.0.0.1`, so open the app at
+`http://127.0.0.1:8080` (not `localhost`, which may resolve to `::1`) and use
+`127.0.0.1` in `-oidc-redirect-url` as well. The test VLAN and `-login-network`
+both cover `127.0.0.0/8`, so the success page's arrival check (`/status`)
+completes for Connect, Disconnect and switching to the primary VLAN. Switching
+to a shared VLAN cannot complete locally, as its range does not contain
+`127.0.0.1`; the page then ends in "Taking longer than expected".
+
+Since the index page only shows "Connect" for clients in the login network, you
+reach Disconnect locally by opening `/disconnect` directly.
+
+After changing `test-migrations`, reset the test data:
+
+```bash
+sql-migrate down -limit=0 -config test-migrations/dbconfig.yml
+sql-migrate up -config test-migrations/dbconfig.yml
 ```
 
 ## Debug
