@@ -12,9 +12,9 @@
 </div>
 
 <div id="timeout" class="d-none">
-    <div class="alert alert-warning" role="alert">
-        <h4 class="alert-heading">Taking longer than expected</h4>
-        <p class="mb-0">We could not confirm that you are in the new network yet. Unplug and replug your cable. If that does not help, contact the support.</p>
+    <div class="notice notice-warning" role="alert">
+        <h4 class="notice-title">Taking longer than expected</h4>
+        <p>We could not confirm that you are in the new network yet. Unplug and replug your cable. If that does not help, contact the support.</p>
     </div>
     <div class="d-flex justify-content-center mt-2">
         <form action="/">
@@ -24,9 +24,9 @@
 </div>
 
 <div id="expired" class="d-none">
-    <div class="alert alert-warning" role="alert">
-        <h4 class="alert-heading">Session expired</h4>
-        <p class="mb-0">Your login session is no longer valid, so we cannot check your connection. Your change may still have been applied. Log in again to continue.</p>
+    <div class="notice notice-warning" role="alert">
+        <h4 class="notice-title">Session expired</h4>
+        <p>Your login session is no longer valid, so we cannot check your connection. Your change may still have been applied. Log in again to continue.</p>
     </div>
     <div class="d-flex justify-content-center mt-2">
         <form action="/login">
@@ -36,9 +36,9 @@
 </div>
 
 <div id="failed" class="d-none">
-    <div class="alert alert-danger" role="alert">
-        <h4 class="alert-heading">Could not check your connection</h4>
-        <p class="mb-0">The server failed to verify your network. Your change may still have been applied. If you have no internet access after a few minutes, unplug and replug your cable or contact the support.</p>
+    <div class="notice notice-danger" role="alert">
+        <h4 class="notice-title">Could not check your connection</h4>
+        <p>The server failed to verify your network. Your change may still have been applied. If you have no internet access after a few minutes, unplug and replug your cable or contact the support.</p>
     </div>
     <div class="d-flex justify-content-center mt-2">
         <form action="/">
@@ -49,8 +49,8 @@
 
 {{/* Cautious message. Shown without JS, and when the arrival check cannot run or has no answer. */}}
 <div id="requested">
-    <div class="alert alert-success" role="alert">
-        <h4 class="alert-heading">{{if .switching}}VLAN switch requested.{{else if .connecting}}Connection requested.{{else}}Disconnect requested.{{end}}</h4>
+    <div class="notice notice-success" role="alert">
+        <h4 class="notice-title">{{if .switching}}VLAN switch requested.{{else if .connecting}}Connection requested.{{else}}Disconnect requested.{{end}}</h4>
         <p>Your connection will drop briefly and the change takes effect within a few minutes. If nothing happens after 5 minutes, unplug and replug your cable.</p>
     </div>
     <div class="d-flex justify-content-center mt-2">
@@ -64,8 +64,8 @@
 <div id="done" class="d-none">
 {{if .switching}}
 
-<div class="alert alert-success" role="alert">
-    <h4 class="alert-heading">VLAN switched!</h4>
+<div class="notice notice-success" role="alert">
+    <h4 class="notice-title">VLAN switched!</h4>
     <p>You are now connected to the new VLAN.</p>
 </div>
 
@@ -77,8 +77,8 @@
 
 {{else if .connecting}}
 
-<div class="alert alert-success" role="alert">
-    <h4 class="alert-heading">Connected!</h4>
+<div class="notice notice-success" role="alert">
+    <h4 class="notice-title">Connected!</h4>
     <p>You are now on the network and should have internet access.</p>
 </div>
 
@@ -90,8 +90,8 @@
 
 {{else}}
 
-<div class="alert alert-success" role="alert">
-    <h4 class="alert-heading">Disconnected.</h4>
+<div class="notice notice-success" role="alert">
+    <h4 class="notice-title">Disconnected.</h4>
     <p>You are back in the logon network. Connect again to get internet access.</p>
 </div>
 

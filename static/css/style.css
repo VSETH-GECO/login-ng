@@ -92,19 +92,51 @@ body {
   left: 150%;
 }
 
-/* 5. Error Message Styling */
-.alert-danger {
-  /* Match the theme */
-  background-color: #3d0000 !important;
-  color: #ffcccc !important;
-  border-color: #ff0000 !important;
+/* 5. Status messages — terminal-style panel with a neon accent bar */
+.notice {
+  --notice-rgb: 255, 0, 0;
+  margin-bottom: 1rem;
+  padding: 1rem 1.25rem;
+  text-align: left;
+  color: #cfcfcf;
+  font-size: 0.95rem;
+  background:
+    linear-gradient(90deg, rgba(var(--notice-rgb), 0.12) 0%, transparent 70%),
+    #141414;
+  border: 1px solid #262626;
+  border-left: 3px solid rgb(var(--notice-rgb));
   border-radius: 4px;
-  box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+  box-shadow: -4px 0 14px -6px rgb(var(--notice-rgb));
 }
 
-.alert-danger .alert-heading {
-  color: #ff6666 !important;
+.notice-success { --notice-rgb: 51, 255, 136; }
+.notice-warning { --notice-rgb: 255, 176, 0; }
+.notice-danger  { --notice-rgb: 255, 51, 51; }
+
+.notice > :last-child {
+  margin-bottom: 0;
 }
+
+.notice strong {
+  color: #ffffff;
+}
+
+.notice-title {
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgb(var(--notice-rgb));
+  text-shadow: 0 0 8px rgba(var(--notice-rgb), 0.6);
+}
+
+/* Status tag before the title; the second declaration hides it from screen readers */
+.notice-title::before { margin-right: 0.5em; opacity: 0.8; }
+.notice-success .notice-title::before { content: "[OK]"; content: "[OK]" / ""; }
+.notice-warning .notice-title::before { content: "[WARN]"; content: "[WARN]" / ""; }
+.notice-danger .notice-title::before { content: "[ERR]"; content: "[ERR]" / ""; }
+
 /* 6. Switch VLAN button — grey outline, red fill on hover */
 .btn.btn-outline-secondary {
   font-weight: 900;
